@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Backend
+backend/.env
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+backend/uploads/
+backend/.pytest_cache/
+
+# Frontend (also covered by frontend/.gitignore)
+frontend/node_modules/
+frontend/.next/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log

@@ -1,0 +1,82 @@
+SANDEEP DIXIT
+IT PMO Senior Project Manager | Global Cross-Functional Program Delivery | PMI-Aligned Governance
+Phone: +91-7723933431   Email: dixitsandeep339@gmail.com   Location: Noida, UP, India   LinkedIn: linkedin.com/in/sandeep-dixit-pmp
+PMP Certified (PMI); Agile Scrum Master Foundation; ISO/IEC 27001:2022 Lead Auditor; ISO/IEC 27701:2025 Lead Auditor
+
+PROFESSIONAL SUMMARY
+PMP-certified IT Project Manager with 13+ years leading the planning, execution, monitoring, controlling, and closing of complex, cross-functional IT and infrastructure programs valued up to Rs. 50+ Crore. Proven track record applying PMI's core knowledge areas - Integration, Scope, Schedule, Cost, Quality, Resource, Communication, Risk, Procurement, and Stakeholder Management - to deliver on-time, on-budget outcomes with 99.5% post-go-live uptime and zero cost overruns. Skilled at developing comprehensive project plans that align stakeholder requirements with organizational goals, coordinating multi-vendor and cross-functional technical teams, and managing budgets, timelines, and resource allocation across multi-site, multi-district programs. Strong record of leading teams of 65+ across geographically distributed locations, building RAID-based risk and governance frameworks that cut escalations by 35%, and delivering executive-level MIS reporting and presentations to senior government and IPS-level stakeholders. Experienced in IT infrastructure, enterprise data platforms, AI/ML-enabled analytics, and Agile/Scrum and Waterfall/Hybrid delivery methodologies, with a process-oriented approach to quality assurance, continuous improvement, and stakeholder confidence in high-visibility programs.
+
+CORE COMPETENCIES
+- PMI Knowledge Areas: Integration Management, Scope Management, Schedule Management, Cost Management, Quality Management, Resource Management, Communications Management, Risk Management, Procurement Management, Stakeholder Management
+- Project and Program Leadership: End-to-End Project Lifecycle (Initiation to Closure), PMO Governance, Program Delivery, Cross-Functional Team Leadership, Multi-Vendor Coordination, Milestone and Deliverable Tracking
+- Planning and Governance: Comprehensive Project Planning, Digital Transformation Strategy, IT Infrastructure Management, EOI/DPR/RFP/BOQ Preparation, Contract and Legal Governance, Solution Documentation, Change Control
+- Risk and Quality Management: RAID Analysis, Risk Register Development, Issue Escalation, Quality Assurance, SLA Governance, Performance Monitoring, Regulatory Compliance
+- Budget and Resource Management: Budget Planning and Control, CAPEX/OPEX Billing, Cost Estimation, Financial Forecasting, Procurement Governance, Vendor Management, Resource Allocation
+- Leadership and Stakeholder Engagement: Team Leadership (65+ members), Executive Reporting and Presentations, Cross-Functional Coordination, Active Listening, Negotiation, Conflict Resolution, Government and Enterprise Relations
+- Domain Expertise: Enterprise IT Infrastructure, Smart City and Safe City Programs, ITMS, ICCC, Data Centre Operations, IP Surveillance, AI/ML-Driven Data Platforms, Data Management
+- Methodologies and Tools: Agile, Scrum, Waterfall, Hybrid, MS Project, JIRA, MS Excel (Advanced), ServiceNow (HPSM), NMS Platforms, Project Management Software
+
+PROFESSIONAL EXPERIENCE
+Project Lead - Awzpact Technology & Services Pvt. Ltd.    |    Dec 2024 - Present
+Client: Digital India Corporation, Delhi & Geological Survey of India, Bangalore
+- Lead planning, execution, monitoring, and closing of national IT and e-Governance transformation programs, establishing PMO governance frameworks, milestone tracking, and executive MIS dashboards to keep delivery aligned with organizational goals.
+- Direct EOI, DPR, and RFP governance for the Data Processing, Interpretation & Integration Centre (DPIIC), a national AI/ML-driven geoscientific platform spanning data ingestion, standardization, and predictive modeling, coordinating cross-functional technical personnel across all project phases.
+- Develop digital transformation roadmaps, data pipelines, and AI/ML-ready datasets supporting large-scale analytics and process optimization, applying Integration and Scope Management principles to merge stakeholder requirements with program objectives.
+- Negotiate and finalize MoUs, service agreements, and strategic partnership frameworks with Digital India Corporation (DIC), EPFO, and CISF, building strong, transparent stakeholder partnerships.
+- Control program budgeting, procurement governance, and financial forecasting, achieving zero budget overruns across all active programs through disciplined Cost and Procurement Management.
+- Implement RAID-based governance and dependency-tracking controls, reducing risk-escalation incidents by 35% across multi-stakeholder programs through proactive Risk Management practices.
+- Author IT infrastructure modernization roadmap and digital transformation strategy for the Delhi Development Authority (DDA), aligning technology initiatives with long-term governance objectives.
+
+Project Manager - CMS Computers Limited    |    Feb 2023 - Oct 2024
+Client: Indore Smart City Development Ltd. (ISCDL), Indore, MP
+- Delivered a Rs. 50+ Crore Intelligent Traffic Management System (ITMS) for Indore Smart City, on-time and within-budget, achieving 99.5% post-go-live uptime and 100% milestone adherence against baseline.
+- Governed contracts and SLAs across 10+ vendors, applying formal Quality Assurance and Procurement Management practices; identified and mitigated 15+ delivery risks with zero cost overruns or schedule slippage.
+- Managed a centralized PMO across 4 concurrent work streams - Risk & Controls, Security Systems, and Digital Service Delivery - providing regular project reviews and status reporting to executive stakeholders.
+- Prepared BOQs, cost estimates, and procurement plans, maintaining 100% milestone adherence through disciplined Schedule and Cost Management.
+- Led 30+ cross-functional team members through the full project lifecycle; authored SOPs and a knowledge base that cut operational dependency by 40%.
+
+Project Manager - Sai Defence System Pvt. Ltd.    |    Apr 2022 - Feb 2023
+Client: MP Telecom Police Department & TCIL, Bhopal, MP
+- Directed a state-wide rollout of IP-based CCTV surveillance across 1,615+ MP Police Stations, leading full project lifecycle from planning and design through Operations & Maintenance (O&M).
+- Closed a Rs. 30+ Crore CAPEX billing cycle within contractual timelines, enforcing formal change control for all scope and cost variations.
+- Delivered structured MIS dashboards and executive-level project reports to senior IPS-level stakeholders with zero communication escalations, exemplifying strong Communications and Stakeholder Management.
+- Mentored multidisciplinary teams of up to 65+ members across multiple districts, building a high-performance delivery culture through active leadership and resource coordination.
+
+IT Consultant - Independent Engineer - Theme Engineering Services Pvt. Ltd.    |    Apr 2019 - Mar 2022
+Client: National Highways Authority of India (NHAI), NH-66, Karnataka
+- Provided IT consultancy for O&M of NH-66 4-laning (NHDP-IV) infrastructure program, maintaining 98%+ SLA compliance across all toll and highway traffic systems.
+- Supervised ITS, Tolling, AVCC, CCTV, PTZ/ANPR camera, and Highway Traffic Management System (HTMS) installations across a large-scale, multi-site engineering & construction program.
+- Commissioned ICD 2.0 at 3 toll plazas, reducing system downtime by 30%; managed network monitoring via HPSM (ServiceNow) for fault tracking and uptime monitoring.
+- Directed resource planning and capacity management across multiple concurrent programs, ensuring optimal resource utilization and timely delivery.
+
+Assistant Project Manager - Technosys Security System Pvt. Ltd.    |    Feb 2015 - Mar 2019
+Client: Ujjain Smart City & MP Police, Indore / Ujjain / Bhopal
+- Led CCTV surveillance and ITMS (Adaptive Traffic Control System) rollout across 50+ junctions under the MP Safe City Project, coordinating technical personnel across all project phases.
+- Implemented RLVD, ANPR, SVDS, FRS, ICMS, IVMS, and ICCC systems on a Rs. 25+ Crore project delivered on schedule and within budget.
+- Owned the complete 3-year O&M phase, including CAPEX/OPEX billing and SLA compliance; trained 100+ field personnel on operational procedures.
+
+Project Engineer - Medhaj Techno Concept Pvt. Ltd.    |    Oct 2012 - Jan 2015
+Client: Rural Electrification Corporation (REC), MP & UP
+- Delivered Project Management Consultancy (PMC) services for multi-state electrical infrastructure programs, including third-party inspection, quality audits, and DPR preparation.
+- Supervised 765/440 kV power grid substation earthing works; led GPS mapping and distribution network planning per REC standards.
+
+EDUCATION
+- M.S., Data Science & Artificial Intelligence - European Global Institute of Innovation & Technology (In Progress, expected 2027)
+- B.E., Electrical & Electronics Engineering - Shiv Kumar Singh Institute of Technology & Science, RGPV Bhopal (2012)
+
+CERTIFICATIONS & PROFESSIONAL DEVELOPMENT
+- Project Management: PMP (PMI), Dec 2022, Renewed Dec 2025
+- Agile Scrum Master Foundation (May 2024)
+- Contract Management (Dec 2024)
+- Project Management Assessment (Jun 2024)
+- Project Management Fundamentals, IBM (Dec 2024)
+- ISO/IEC 27001:2022 Lead Auditor
+- ISO/IEC 27701:2025 Lead Auditor, Jul 2026 (Certificate ID: 4g3vfrphmv)
+- AI, Data & Emerging Technology:
+- Generative AI for Project Managers
+- Prompt Engineering for Project Managers
+- Introduction to Data Analytics (Dec 2024)
+- Seven AI Project Patterns for Project Management
+
+LANGUAGES
+Hindi (Native)   |   English (Professional Proficiency)
