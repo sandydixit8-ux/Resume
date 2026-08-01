@@ -21,6 +21,7 @@ function SuccessContent() {
 
   return (
     <Card className="w-full max-w-md border border-border/50 bg-transparent text-center">
+      <h1 className="sr-only">Payment Status</h1>
       <CardHeader>
         {status === "loading" ? (
           <div className="flex justify-center mb-4"><Loader2 className="h-12 w-12 animate-spin text-emerald-400" /></div>

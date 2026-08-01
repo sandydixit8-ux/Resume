@@ -77,12 +77,12 @@ export default function CoverLetterPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Tone</label>
-                  <Select options={[{ value: "formal", label: "Formal" }, { value: "conversational", label: "Conversational" }, { value: "enthusiastic", label: "Enthusiastic" }, { value: "executive", label: "Executive" }]} value={tone} onChange={(e) => setTone(e.target.value)} />
+                  <label htmlFor="tone" className="text-sm font-medium mb-1 block">Tone</label>
+                  <Select id="tone" options={[{ value: "formal", label: "Formal" }, { value: "conversational", label: "Conversational" }, { value: "enthusiastic", label: "Enthusiastic" }, { value: "executive", label: "Executive" }]} value={tone} onChange={(e) => setTone(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Length</label>
-                  <Select options={[{ value: "short", label: "Short" }, { value: "medium", label: "Medium" }, { value: "long", label: "Long" }]} value={length} onChange={(e) => setLength(e.target.value)} />
+                  <label htmlFor="length" className="text-sm font-medium mb-1 block">Length</label>
+                  <Select id="length" options={[{ value: "short", label: "Short" }, { value: "medium", label: "Medium" }, { value: "long", label: "Long" }]} value={length} onChange={(e) => setLength(e.target.value)} />
                 </div>
               </div>
               <Textarea placeholder="Paste the job description..." className="min-h-[160px] bg-background/50" value={jdText} onChange={(e) => setJdText(e.target.value)} />

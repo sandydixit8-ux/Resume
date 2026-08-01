@@ -97,7 +97,7 @@ export default function JDMatchPage() {
               </Button>
               <p className="text-xs text-muted-foreground text-center">
                 Don&apos;t have a Resume ID?{" "}
-                <Link href="/analyze" className="text-emerald-400 hover:text-emerald-300">Analyze a resume first</Link>
+                <Link href="/analyze" className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300">Analyze a resume first</Link>
               </p>
             </CardContent>
           </Card>

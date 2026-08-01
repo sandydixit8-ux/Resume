@@ -13,6 +13,7 @@ export default function PricingCancelPage() {
       <Header />
       <main id="main-content" className="flex-1 flex items-center justify-center pt-24 pb-12 px-4">
         <Card className="w-full max-w-md border border-border/50 bg-transparent text-center">
+          <h1 className="sr-only">Checkout Cancelled</h1>
           <CardHeader>
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center">

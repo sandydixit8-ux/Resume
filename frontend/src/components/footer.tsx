@@ -19,7 +19,7 @@ export default function Footer() {
             </p>
           </div>
           <div>
-            <h4 className="text-sm font-semibold mb-3">Product</h4>
+            <h2 className="text-sm font-semibold mb-3">Product</h2>
             <div className="flex flex-col gap-2">
               <Link href="/analyze" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Resume Analyzer</Link>
               <Link href="/jd-match" className="text-sm text-muted-foreground hover:text-foreground transition-colors">JD Matching</Link>
@@ -30,13 +30,13 @@ export default function Footer() {
             </div>
           </div>
           <div>
-            <h4 className="text-sm font-semibold mb-3">Company</h4>
+            <h2 className="text-sm font-semibold mb-3">Company</h2>
             <div className="flex flex-col gap-2">
               <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
             </div>
           </div>
           <div>
-            <h4 className="text-sm font-semibold mb-3">Legal</h4>
+            <h2 className="text-sm font-semibold mb-3">Legal</h2>
             <div className="flex flex-col gap-2">
               <span className="text-sm text-muted-foreground">Privacy Policy</span>
               <span className="text-sm text-muted-foreground">Terms of Service</span>

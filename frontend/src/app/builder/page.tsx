@@ -524,7 +524,7 @@ function BuilderInner() {
                 <CardDescription>{tpl.name} template</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-lg overflow-hidden shadow-2xl ring-1 ring-black/40 max-h-[600px] overflow-y-auto">{preview}</div>
+                <div tabIndex={0} role="region" aria-label="Resume preview" className="rounded-lg overflow-hidden shadow-2xl ring-1 ring-black/40 max-h-[600px] overflow-y-auto">{preview}</div>
                 {!hasAnyData(data) && (
                   <p className="text-[11px] text-amber-400/90 text-center bg-amber-950/20 border border-amber-800/30 rounded-lg px-3 py-2">
                     Showing sample content — fill in your details on the left and it will be replaced automatically.
