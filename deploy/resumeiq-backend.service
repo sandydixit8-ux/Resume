@@ -1,0 +1,32 @@
+# systemd unit for the ResumeIQ backend (FastAPI + uvicorn).
+#
+# Install on the VPS:
+#   sudo cp resumeiq-backend.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now resumeiq-backend
+#
+# Assumes layout:
+#   /var/www/resumeiq/backend   <- repo backend folder (clone of this repo)
+#   /var/www/resumeiq/venv      <- python venv
+#   /var/www/resumeiq/data      <- persistent sqlite db + uploads
+#
+# Run with: sudo journalctl -u resumeiq-backend -f
+
+[Unit]
+Description=ResumeIQ AI backend (FastAPI / uvicorn)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/resumeiq/backend
+# Reads production settings; also mirrors backend/.env in the repo.
+EnvironmentFile=/var/www/resumeiq/backend/.env
+ExecStart=/var/www/resumeiq/venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -14,6 +14,10 @@ const securityHeaders = [
   },
 ];
 
+// Internal backend URL used by the /api/v1 rewrite. Same-VPS deploy (see deploy/):
+// keep http://localhost:8000. For a remote API host, set BACKEND_INTERNAL_URL.
+const backendInternalUrl = process.env.BACKEND_INTERNAL_URL || "http://localhost:8000";
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   skipTrailingSlashRedirect: true,
@@ -21,7 +25,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/v1/:path*",
-        destination: "http://localhost:8000/api/v1/:path*",
+        destination: `${backendInternalUrl}/api/v1/:path*`,
       },
     ];
   },

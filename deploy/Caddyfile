@@ -1,0 +1,18 @@
+# Caddyfile — ResumeIQ AI reverse proxy (auto-HTTPS)
+# Replace yourdomain.com with your real domain, then:
+#   caddy run --config Caddyfile   (or: sudo systemctl enable --now caddy)
+#
+# All traffic: browser -> Caddy (HTTPS) -> Next.js (:3000) -> rewrites -> FastAPI (:8000)
+# Because Next.js proxies /api/v1 internally, this single site block is all you need.
+
+yourdomain.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:3000
+}
+
+# Optional: expose the API directly for external integrations (e.g. the API-access
+# plan feature). Uncomment and set a DNS A record for api.yourdomain.com.
+# api.yourdomain.com {
+#     encode zstd gzip
+#     reverse_proxy 127.0.0.1:8000
+# }

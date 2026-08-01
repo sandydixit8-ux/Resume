@@ -1,0 +1,29 @@
+# systemd unit for the ResumeIQ frontend (Next.js production server).
+#
+# Install on the VPS:
+#   sudo cp resumeiq-frontend.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now resumeiq-frontend
+#
+# Assumes layout:
+#   /var/www/resumeiq/frontend   <- repo frontend folder (built with `npm run build`)
+#
+# Run with: sudo journalctl -u resumeiq-frontend -f
+
+[Unit]
+Description=ResumeIQ AI frontend (Next.js)
+After=network.target resumeiq-backend.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/resumeiq/frontend
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
