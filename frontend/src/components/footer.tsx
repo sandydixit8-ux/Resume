@@ -44,7 +44,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="border-t border-border/50 pt-6 text-center text-sm text-muted-foreground">
-          &copy; {currentYear} ResumeIQ. All rights reserved.
+          &copy; {currentYear} ResumeIQ. All rights reserved. Technology Partner: Ridhyansh Tech Infra Pvt. Ltd.
         </div>
       </div>
     </footer>
