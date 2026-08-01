@@ -16,6 +16,7 @@ const navItems = {
   ],
   Company: [
     { label: "Pricing", to: "/pricing" },
+    { label: "Contact", to: "/contact" },
   ],
 }
 
@@ -47,6 +48,9 @@ export default function Header() {
           </Link>
           <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
             Pricing
+          </Link>
+          <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+            Contact
           </Link>
         </nav>
 
@@ -91,6 +95,7 @@ export default function Header() {
             <Link href="/recruiter" className="text-sm font-medium py-2 hover:text-gradient" onClick={() => setOpen(false)}>Recruiter</Link>
             <div className="border-t border-border/50 pt-3">
               <Link href="/pricing" className="text-sm font-medium py-2 hover:text-gradient" onClick={() => setOpen(false)}>Pricing</Link>
+              <Link href="/contact" className="text-sm font-medium py-2 hover:text-gradient" onClick={() => setOpen(false)}>Contact</Link>
               <Link href="/admin/login" className="text-sm font-medium py-2 flex items-center gap-2 text-muted-foreground hover:text-emerald-400" onClick={() => setOpen(false)}>
                 <Shield className="h-3.5 w-3.5" /> Admin Login
               </Link>

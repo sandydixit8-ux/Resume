@@ -40,4 +40,5 @@ def init_db():
     from app.models.analysis import Analysis, JDAnalysis, CoverLetter
     from app.models.admin import VisitorLog, AdminSetting
     from app.models.payment import Subscription
+    from app.models.contact import ContactMessage
     Base.metadata.create_all(bind=engine)

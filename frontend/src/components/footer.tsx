@@ -33,6 +33,7 @@ export default function Footer() {
             <h2 className="text-sm font-semibold mb-3">Company</h2>
             <div className="flex flex-col gap-2">
               <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
+              <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
             </div>
           </div>
           <div>

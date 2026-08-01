@@ -122,6 +122,33 @@ export async function getAdminFinancials(token: string) {
   return res.json()
 }
 
+export async function submitContact(data: { name: string; email: string; company?: string; subject?: string; message: string }) {
+  const res = await fetch(`${API_BASE}/api/v1/contact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function getContactMessages(token: string) {
+  const res = await fetch(`${API_BASE}/api/v1/admin/contact`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function deleteContactMessage(token: string, id: number) {
+  const res = await fetch(`${API_BASE}/api/v1/admin/contact/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
 export async function getPaymentConfig() {
   const res = await fetch(`${API_BASE}/api/v1/payment/config`)
   if (!res.ok) throw new Error(await res.text())

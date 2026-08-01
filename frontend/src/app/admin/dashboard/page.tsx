@@ -6,13 +6,15 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Shield, Users, Eye, BarChart3, LogOut, ArrowLeft, Globe, Clock, CreditCard } from "lucide-react"
-import { getAdminStats } from "@/lib/api"
+import { Shield, Users, Eye, BarChart3, LogOut, ArrowLeft, Globe, Clock, CreditCard, Mail, Trash2 } from "lucide-react"
+import { getAdminStats, getContactMessages, deleteContactMessage } from "@/lib/api"
 
 export default function AdminDashboardPage() {
   const router = useRouter()
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [messages, setMessages] = useState<any[]>([])
+  const [messagesLoading, setMessagesLoading] = useState(true)
 
   useEffect(() => {
     const token = localStorage.getItem("admin_token")
@@ -21,7 +23,20 @@ export default function AdminDashboardPage() {
       .then(setStats)
       .catch(() => { localStorage.removeItem("admin_token"); router.push("/admin/login") })
       .finally(() => setLoading(false))
+    getContactMessages(token)
+      .then((d) => setMessages(d.messages || []))
+      .catch(() => setMessages([]))
+      .finally(() => setMessagesLoading(false))
   }, [router])
+
+  async function handleDelete(id: number) {
+    const token = localStorage.getItem("admin_token")
+    if (!token) return
+    try {
+      await deleteContactMessage(token, id)
+      setMessages((m) => m.filter((msg) => msg.id !== id))
+    } catch {}
+  }
 
   function handleLogout() {
     localStorage.removeItem("admin_token")
@@ -168,6 +183,50 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card className="border border-border/50 bg-transparent mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 text-emerald-400" />
+                  Contact Inbox {messages.length > 0 && <Badge className="bg-emerald-900/40 text-emerald-400 border-0">{messages.length}</Badge>}
+                </CardTitle>
+                <CardDescription>Sales and contact inquiries submitted through the site</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {messagesLoading ? (
+                  <p className="text-muted-foreground text-sm text-center py-8">Loading...</p>
+                ) : messages.length > 0 ? (
+                  <div className="space-y-4">
+                    {messages.map((m) => (
+                      <div key={m.id} className="rounded-lg bg-muted/50 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium text-sm">{m.name}</span>
+                              <a href={`mailto:${m.email}`} className="text-sm text-emerald-400 hover:underline truncate">{m.email}</a>
+                              {m.company && <Badge className="bg-cyan-900/40 text-cyan-400 border-0">{m.company}</Badge>}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {m.subject} · {m.created_at ? new Date(m.created_at).toLocaleString() : "—"}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleDelete(m.id)}
+                            aria-label={`Delete message from ${m.name}`}
+                            className="p-2 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-950/30 transition-colors shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <p className="text-sm mt-3 whitespace-pre-wrap">{m.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm text-center py-8">No contact inquiries yet</p>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>

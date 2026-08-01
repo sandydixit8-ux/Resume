@@ -11,6 +11,7 @@ from app.api.cover_letter import router as cover_letter_router
 from app.api.interview import router as interview_router
 from app.api.admin import router as admin_router
 from app.api.payment import router as payment_router
+from app.api.contact import router as contact_router
 
 settings = get_settings()
 
@@ -56,6 +57,7 @@ app.include_router(cover_letter_router, prefix="/api/v1/cover-letter")
 app.include_router(interview_router, prefix="/api/v1/interview")
 app.include_router(admin_router)
 app.include_router(payment_router)
+app.include_router(contact_router)
 
 
 @app.get("/api/v1/health")
