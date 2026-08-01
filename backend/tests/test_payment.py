@@ -7,15 +7,25 @@ def test_payment_config_inr(client):
     data = r.json()
     assert data["currency"] == "INR"
     assert data["currency_symbol"] == "₹"
+    assert data["currencies"] == ["INR", "USD"]
+    assert data["currency_symbols"] == {"INR": "₹", "USD": "$"}
+    assert data["default_currency"] == "INR"
     plans = data["plans"]
-    assert plans["free"]["price"] == 0
-    assert plans["pro"]["price"] == 1900
-    assert plans["recruiter"]["price"] == 9900
+    assert plans["free"]["prices"] == {"INR": 0, "USD": 0}
+    assert plans["pro"]["prices"] == {"INR": 1900, "USD": 19}
+    assert plans["recruiter"]["prices"] == {"INR": 9900, "USD": 99}
 
 
 def test_checkout_invalid_plan(client):
     r = client.post(
         "/api/v1/payment/create-checkout", json={"plan": "hacker", "email": "a@b.com"}
+    )
+    assert r.status_code == 400
+
+
+def test_checkout_invalid_currency(client):
+    r = client.post(
+        "/api/v1/payment/create-checkout", json={"plan": "pro", "email": "a@b.com", "currency": "EUR"}
     )
     assert r.status_code == 400
 
@@ -32,8 +42,24 @@ def test_checkout_demo_creates_subscription(client):
     assert r.status_code == 200
     data = r.json()
     assert data["demo"] is True
+    assert data["currency"] == "INR"
 
     sub = client.get("/api/v1/payment/subscription", params={"email": "demo@test.com"})
+    assert sub.status_code == 200
+    assert sub.json()["plan"] == "pro"
+    assert sub.json()["status"] == "active"
+
+
+def test_checkout_demo_usd(client):
+    r = client.post(
+        "/api/v1/payment/create-checkout", json={"plan": "pro", "email": "usd@test.com", "currency": "USD"}
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["demo"] is True
+    assert data["currency"] == "USD"
+
+    sub = client.get("/api/v1/payment/subscription", params={"email": "usd@test.com"})
     assert sub.status_code == 200
     assert sub.json()["plan"] == "pro"
     assert sub.json()["status"] == "active"

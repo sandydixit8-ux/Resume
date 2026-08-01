@@ -128,11 +128,11 @@ export async function getPaymentConfig() {
   return res.json()
 }
 
-export async function createCheckoutSession(plan: string, email: string) {
+export async function createCheckoutSession(plan: string, email: string, currency = "INR") {
   const res = await fetch(`${API_BASE}/api/v1/payment/create-checkout`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ plan, email }),
+    body: JSON.stringify({ plan, email, currency }),
   })
   if (!res.ok) throw new Error(await res.text())
   return res.json()

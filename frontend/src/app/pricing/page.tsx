@@ -30,8 +30,8 @@ const plans = [
 
 const planIds: Record<string, string> = { Free: "free", Pro: "pro", Recruiter: "recruiter" }
 
-function formatPrice(amount: number, symbol: string) {
-  return `${symbol}${amount.toLocaleString("en-IN")}`
+function formatPrice(amount: number, symbol: string, locale = "en-IN") {
+  return `${symbol}${amount.toLocaleString(locale)}`
 }
 
 const featureCompare = [
@@ -53,8 +53,9 @@ export default function PricingPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [stripeConfigured, setStripeConfigured] = useState(false)
-  const [backendPlans, setBackendPlans] = useState<Record<string, { price: number; period: string; name: string; features: string[] }> | null>(null)
-  const [currencySymbol, setCurrencySymbol] = useState("₹")
+  const [backendPlans, setBackendPlans] = useState<Record<string, { prices: Record<string, number>; period: string; name: string; features: string[] }> | null>(null)
+  const [currency, setCurrency] = useState("INR")
+  const [currencySymbols, setCurrencySymbols] = useState<Record<string, string>>({ INR: "₹", USD: "$" })
 
   useEffect(() => {
     const saved = localStorage.getItem("sub_email")
@@ -64,7 +65,8 @@ export default function PricingPage() {
         const config = await getPaymentConfig()
         setStripeConfigured(config.stripe_configured)
         setBackendPlans(config.plans)
-        setCurrencySymbol(config.currency_symbol || "₹")
+        if (config.currency_symbols) setCurrencySymbols(config.currency_symbols)
+        if (config.default_currency) setCurrency(config.default_currency)
         const savedEmail = localStorage.getItem("sub_email")
         if (savedEmail) {
           const sub = await getSubscription(savedEmail)
@@ -75,12 +77,14 @@ export default function PricingPage() {
     })()
   }, [])
 
+  const symbol = currencySymbols[currency] || "₹"
+  const locale = currency === "USD" ? "en-US" : "en-IN"
   const displayPlans = plans.map((p) => {
     const backend = backendPlans?.[planIds[p.name]]
     if (backend) {
       return {
         ...p,
-        price: formatPrice(backend.price, currencySymbol),
+        price: formatPrice(backend.prices?.[currency] ?? 0, symbol, locale),
         period: backend.period || p.period,
         features: backend.features.length > 0 ? backend.features : p.features,
       }
@@ -108,7 +112,7 @@ export default function PricingPage() {
     setActionLoading(planId)
     setError(null)
     try {
-      const result = await createCheckoutSession(planId, subEmail)
+      const result = await createCheckoutSession(planId, subEmail, currency)
       localStorage.setItem("sub_email", subEmail)
       if (result.demo) {
         setCurrentPlan("pro")
@@ -158,6 +162,20 @@ export default function PricingPage() {
               <p className="text-muted-foreground text-lg max-w-xl mx-auto">
                 {stripeConfigured ? "Choose the plan that fits your needs. No hidden fees." : "No API keys needed — demo mode active. Plans work instantly."}
               </p>
+              <div className="flex justify-center mt-8">
+                <div className="inline-flex rounded-lg border border-border/50 bg-muted/30 p-1" role="group" aria-label="Select currency">
+                  {(["INR", "USD"] as const).map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setCurrency(c)}
+                      aria-pressed={currency === c}
+                      className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${currency === c ? "bg-gradient-brand text-white glow-brand" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {c} ({currencySymbols[c] || "₹"})
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {!stripeConfigured && (

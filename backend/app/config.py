@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     stripe_price_pro_monthly: str = "price_pro_monthly"
     stripe_price_recruiter_monthly: str = "price_recruiter_monthly"
+    stripe_price_pro_monthly_usd: str = "price_pro_monthly_usd"
+    stripe_price_recruiter_monthly_usd: str = "price_recruiter_monthly_usd"
     frontend_url: str = "http://localhost:3000"
 
     class Config:

@@ -180,7 +180,7 @@ def admin_financials(db: Session = Depends(get_db), _=Depends(verify_admin)):
         if s.plan in plan_counts:
             plan_counts[s.plan] += 1
 
-    mrr = sum(PLANS[s.plan]["price"] for s in active if s.plan in PLANS)
+    mrr = sum(PLANS[s.plan]["prices"]["INR"] for s in active if s.plan in PLANS)
 
     trend = []
     for i in range(6, -1, -1):
@@ -197,8 +197,8 @@ def admin_financials(db: Session = Depends(get_db), _=Depends(verify_admin)):
         "plan_breakdown": {
             p: {
                 "count": plan_counts.get(p, 0),
-                "price": PLANS[p]["price"],
-                "revenue": plan_counts.get(p, 0) * PLANS[p]["price"],
+                "price": PLANS[p]["prices"]["INR"],
+                "revenue": plan_counts.get(p, 0) * PLANS[p]["prices"]["INR"],
             }
             for p in PLANS
         },

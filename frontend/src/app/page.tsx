@@ -142,30 +142,34 @@ const plans = [
 
 const planIds: Record<string, string> = { Free: "free", Pro: "pro", Recruiter: "recruiter" }
 
-function formatPrice(amount: number, symbol: string) {
-  return `${symbol}${amount.toLocaleString("en-IN")}`
+function formatPrice(amount: number, symbol: string, locale = "en-IN") {
+  return `${symbol}${amount.toLocaleString(locale)}`
 }
 
 export default function LandingPage() {
-  const [backendPlans, setBackendPlans] = useState<Record<string, { price: number; period: string; features: string[] }> | null>(null)
-  const [currencySymbol, setCurrencySymbol] = useState("₹")
+  const [backendPlans, setBackendPlans] = useState<Record<string, { prices: Record<string, number>; period: string; features: string[] }> | null>(null)
+  const [currency, setCurrency] = useState("INR")
+  const [currencySymbols, setCurrencySymbols] = useState<Record<string, string>>({ INR: "₹", USD: "$" })
 
   useEffect(() => {
     ;(async () => {
       try {
         const config = await getPaymentConfig()
         setBackendPlans(config.plans)
-        setCurrencySymbol(config.currency_symbol || "₹")
+        if (config.currency_symbols) setCurrencySymbols(config.currency_symbols)
+        if (config.default_currency) setCurrency(config.default_currency)
       } catch {}
     })()
   }, [])
 
+  const symbol = currencySymbols[currency] || "₹"
+  const locale = currency === "USD" ? "en-US" : "en-IN"
   const displayPlans = plans.map((p) => {
     const backend = backendPlans?.[planIds[p.name]]
     if (backend) {
       return {
         ...p,
-        price: formatPrice(backend.price, currencySymbol),
+        price: formatPrice(backend.prices?.[currency] ?? 0, symbol, locale),
         period: backend.period || p.period,
         features: backend.features.length > 0 ? backend.features : p.features,
       }
@@ -307,6 +311,20 @@ export default function LandingPage() {
               <p className="text-muted-foreground text-lg max-w-xl mx-auto">
                 Choose the plan that fits your needs. No hidden fees.
               </p>
+              <div className="flex justify-center mt-8">
+                <div className="inline-flex rounded-lg border border-border/50 bg-muted/30 p-1" role="group" aria-label="Select currency">
+                  {(["INR", "USD"] as const).map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setCurrency(c)}
+                      aria-pressed={currency === c}
+                      className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${currency === c ? "bg-gradient-brand text-white glow-brand" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {c} ({currencySymbols[c] || "₹"})
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {displayPlans.map((p, i) => (

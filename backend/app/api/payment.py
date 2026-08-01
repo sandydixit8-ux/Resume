@@ -9,21 +9,25 @@ from app.config import get_settings
 router = APIRouter(tags=["Payment"])
 
 PLANS = {
-    "free": {"id": "free", "name": "Free", "price": 0, "currency": "INR", "period": "forever", "features": ["3 resume analyses / month", "Basic ATS score", "1 resume template", "1 cover letter / month", "Community support"]},
-    "pro": {"id": "pro", "name": "Pro", "price": 1900, "currency": "INR", "period": "per month", "features": ["Unlimited analyses", "Unlimited resume builder", "Unlimited cover letters", "JD matching", "AI interview prep", "All premium templates", "Priority support"]},
-    "recruiter": {"id": "recruiter", "name": "Recruiter", "price": 9900, "currency": "INR", "period": "per month", "features": ["Everything in Pro", "Unlimited job posts", "AI candidate ranking", "Resume comparison", "Analytics dashboard", "Team access (5 seats)", "API access"]},
+    "free": {"id": "free", "name": "Free", "prices": {"INR": 0, "USD": 0}, "period": "forever", "features": ["3 resume analyses / month", "Basic ATS score", "1 resume template", "1 cover letter / month", "Community support"]},
+    "pro": {"id": "pro", "name": "Pro", "prices": {"INR": 1900, "USD": 19}, "period": "per month", "features": ["Unlimited analyses", "Unlimited resume builder", "Unlimited cover letters", "JD matching", "AI interview prep", "All premium templates", "Priority support"]},
+    "recruiter": {"id": "recruiter", "name": "Recruiter", "prices": {"INR": 9900, "USD": 99}, "period": "per month", "features": ["Everything in Pro", "Unlimited job posts", "AI candidate ranking", "Resume comparison", "Analytics dashboard", "Team access (5 seats)", "API access"]},
 }
 
+CURRENCIES = ["INR", "USD"]
+DEFAULT_CURRENCY = "INR"
 CURRENCY_SYMBOL = {"INR": "₹", "USD": "$"}
 
 @router.get("/api/v1/payment/config")
 def payment_config():
     settings = get_settings()
-    currency = "INR"
     return {
         "stripe_configured": bool(settings.stripe_secret_key),
-        "currency": currency,
-        "currency_symbol": CURRENCY_SYMBOL.get(currency, "₹"),
+        "currency": DEFAULT_CURRENCY,
+        "currency_symbol": CURRENCY_SYMBOL[DEFAULT_CURRENCY],
+        "currency_symbols": CURRENCY_SYMBOL,
+        "currencies": CURRENCIES,
+        "default_currency": DEFAULT_CURRENCY,
         "plans": PLANS,
     }
 
@@ -32,7 +36,10 @@ def create_checkout(request: dict, db: Session = Depends(get_db)):
     settings = get_settings()
     plan_id = request.get("plan", "free")
     email = request.get("email", "")
+    currency = (request.get("currency") or DEFAULT_CURRENCY).upper()
 
+    if currency not in CURRENCIES:
+        raise HTTPException(status_code=400, detail="Invalid currency. Supported: INR, USD")
     if plan_id not in PLANS:
         raise HTTPException(status_code=400, detail="Invalid plan")
     if not email:
@@ -43,12 +50,13 @@ def create_checkout(request: dict, db: Session = Depends(get_db)):
         stripe.api_key = settings.stripe_secret_key
 
         price_map = {
-            "pro": settings.stripe_price_pro_monthly,
-            "recruiter": settings.stripe_price_recruiter_monthly,
+            "INR": {"pro": settings.stripe_price_pro_monthly, "recruiter": settings.stripe_price_recruiter_monthly},
+            "USD": {"pro": settings.stripe_price_pro_monthly_usd, "recruiter": settings.stripe_price_recruiter_monthly_usd},
         }
-        price_id = price_map.get(plan_id)
-        if not price_id or price_id in ("price_pro_monthly", "price_recruiter_monthly"):
-            raise HTTPException(status_code=500, detail=f"Stripe price ID not configured for {plan_id} plan. Set STRIPE_PRICE_PRO_MONTHLY / STRIPE_PRICE_RECRUITER_MONTHLY in .env")
+        price_id = price_map[currency].get(plan_id)
+        placeholder_ids = ("price_pro_monthly", "price_recruiter_monthly", "price_pro_monthly_usd", "price_recruiter_monthly_usd")
+        if not price_id or price_id in placeholder_ids:
+            raise HTTPException(status_code=500, detail=f"Stripe price ID not configured for {plan_id} ({currency}). Set STRIPE_PRICE_* in .env")
 
         try:
             checkout_session = stripe.checkout.Session.create(
@@ -57,9 +65,9 @@ def create_checkout(request: dict, db: Session = Depends(get_db)):
                 line_items=[{"price": price_id, "quantity": 1}],
                 success_url=f"{settings.frontend_url}/pricing/success?session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=f"{settings.frontend_url}/pricing/cancel",
-                metadata={"plan": plan_id, "email": email},
+                metadata={"plan": plan_id, "email": email, "currency": currency},
             )
-            return {"url": checkout_session.url, "session_id": checkout_session.id}
+            return {"url": checkout_session.url, "session_id": checkout_session.id, "currency": currency}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Stripe error: {str(e)}")
     else:
@@ -76,6 +84,7 @@ def create_checkout(request: dict, db: Session = Depends(get_db)):
             "url": f"/pricing/success?session_id=demo_{plan_id}_{email}",
             "session_id": f"demo_{plan_id}_{email}",
             "demo": True,
+            "currency": currency,
         }
 
 @router.get("/api/v1/payment/subscription")
