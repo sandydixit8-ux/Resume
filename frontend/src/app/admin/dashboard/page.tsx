@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Shield, Users, Eye, BarChart3, LogOut, ArrowLeft, Globe, Clock } from "lucide-react"
+import { Shield, Users, Eye, BarChart3, LogOut, ArrowLeft, Globe, Clock, CreditCard } from "lucide-react"
 import { getAdminStats } from "@/lib/api"
 
 export default function AdminDashboardPage() {
@@ -45,21 +45,29 @@ export default function AdminDashboardPage() {
             <Shield className="h-5 w-5 text-emerald-400" />
             <span className="font-bold text-gradient">Admin</span>
           </Link>
+          <nav className="flex items-center gap-1 rounded-full bg-muted/50 p-1">
+            <Link href="/admin/dashboard" className="px-3 py-1 text-sm font-medium rounded-full bg-emerald-900/40 text-emerald-400">
+              Dashboard
+            </Link>
+            <Link href="/admin/payments" className="px-3 py-1 text-sm font-medium rounded-full text-muted-foreground hover:text-foreground">
+              Payments
+            </Link>
+          </nav>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{localStorage.getItem("admin_username")}</span>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" /> Logout
             </Button>
-            <Link href="/">
-              <Button variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Site
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 pt-12 pb-12">
+      <main id="main-content" className="flex-1 pt-12 pb-12">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <h1 className="text-3xl font-bold mb-2">Dashboard</h1>

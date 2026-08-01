@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
@@ -13,24 +14,38 @@ from app.api.payment import router as payment_router
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_db()
+    yield
+
+
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="AI-powered resume analysis, ATS compatibility scoring, JD matching, and cover letter generation.",
+    lifespan=lifespan,
 )
+
+
+def _cors_origins():
+    if settings.cors_origins == "*":
+        return ["*"]
+    return [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+
+
+# Allow credentials only when origins are explicitly restricted.
+# Wildcard "*" with credentials is invalid per the fetch spec and was a security finding.
+allow_credentials = settings.cors_origins != "*"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(",") if settings.cors_origins != "*" else ["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins(),
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def on_startup():
-    init_db()
 
 
 app.include_router(resume_router, prefix="/api/v1/resume")

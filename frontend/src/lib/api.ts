@@ -114,6 +114,14 @@ export async function getAdminStats(token: string) {
   return res.json()
 }
 
+export async function getAdminFinancials(token: string) {
+  const res = await fetch(`${API_BASE}/api/v1/admin/financials`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
 export async function getPaymentConfig() {
   const res = await fetch(`${API_BASE}/api/v1/payment/config`)
   if (!res.ok) throw new Error(await res.text())

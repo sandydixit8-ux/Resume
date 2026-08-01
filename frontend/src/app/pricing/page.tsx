@@ -12,21 +12,27 @@ import { getPaymentConfig, createCheckoutSession, getSubscription, createPortalS
 
 const plans = [
   {
-    name: "Free", price: "$0", period: "forever", desc: "Perfect for trying things out",
+    name: "Free", price: "₹0", period: "forever", desc: "Perfect for trying things out",
     features: ["3 resume analyses / month", "Basic ATS score", "1 resume template", "1 cover letter / month", "Community support"],
     cta: "Get Started", highlighted: false,
   },
   {
-    name: "Pro", price: "$19", period: "per month", desc: "For serious job seekers",
+    name: "Pro", price: "₹1,900", period: "per month", desc: "For serious job seekers",
     features: ["Unlimited analyses", "Unlimited resume builder", "Unlimited cover letters", "JD matching", "AI interview prep", "All premium templates", "Priority support"],
     cta: "Start Pro", highlighted: true,
   },
   {
-    name: "Recruiter", price: "$99", period: "per month", desc: "For hiring teams",
+    name: "Recruiter", price: "₹9,900", period: "per month", desc: "For hiring teams",
     features: ["Everything in Pro", "Unlimited job posts", "AI candidate ranking", "Resume comparison", "Analytics dashboard", "Team access (5 seats)", "API access"],
     cta: "Contact Sales", highlighted: false,
   },
 ]
+
+const planIds: Record<string, string> = { Free: "free", Pro: "pro", Recruiter: "recruiter" }
+
+function formatPrice(amount: number, symbol: string) {
+  return `${symbol}${amount.toLocaleString("en-IN")}`
+}
 
 const featureCompare = [
   { feature: "Resume analyses", free: "3/mo", pro: "Unlimited", recruiter: "Unlimited" },
@@ -47,6 +53,8 @@ export default function PricingPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [stripeConfigured, setStripeConfigured] = useState(false)
+  const [backendPlans, setBackendPlans] = useState<Record<string, { price: number; period: string; name: string; features: string[] }> | null>(null)
+  const [currencySymbol, setCurrencySymbol] = useState("₹")
 
   useEffect(() => {
     const saved = localStorage.getItem("sub_email")
@@ -55,6 +63,8 @@ export default function PricingPage() {
       try {
         const config = await getPaymentConfig()
         setStripeConfigured(config.stripe_configured)
+        setBackendPlans(config.plans)
+        setCurrencySymbol(config.currency_symbol || "₹")
         const savedEmail = localStorage.getItem("sub_email")
         if (savedEmail) {
           const sub = await getSubscription(savedEmail)
@@ -64,6 +74,19 @@ export default function PricingPage() {
       } catch {} finally { setLoading(false) }
     })()
   }, [])
+
+  const displayPlans = plans.map((p) => {
+    const backend = backendPlans?.[planIds[p.name]]
+    if (backend) {
+      return {
+        ...p,
+        price: formatPrice(backend.price, currencySymbol),
+        period: backend.period || p.period,
+        features: backend.features.length > 0 ? backend.features : p.features,
+      }
+    }
+    return p
+  })
 
   async function handleCheckout(planId: string) {
     if (planId === "free") {
@@ -124,7 +147,7 @@ export default function PricingPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      <main className="flex-1 pt-24 pb-12">
+      <main id="main-content" className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-4">
@@ -152,7 +175,7 @@ export default function PricingPage() {
             )}
 
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-20">
-              {plans.map((p, i) => {
+              {displayPlans.map((p, i) => {
                 const isCurrent = isPro && p.name === "Pro"
                 return (
                   <Card key={i} className={`relative overflow-hidden border ${p.highlighted ? "border-emerald-500/40 shadow-xl shadow-emerald-500/10 scale-105" : "border-border/50"} bg-transparent hover:border-emerald-500/30 transition-all duration-500`}>

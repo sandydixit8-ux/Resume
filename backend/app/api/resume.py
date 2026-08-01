@@ -5,17 +5,26 @@ from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.resume import Resume
+from app.models.analysis import Analysis, JDAnalysis, CoverLetter
 from app.services.resume_parser import ResumeParserService
+from app.config import get_settings
 
 router = APIRouter(tags=["Resume"])
+
+ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt"]
 
 
 @router.post("/upload")
 async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_db)):
     ext = os.path.splitext(file.filename or "resume.txt")[1].lower()
-    if ext not in [".pdf", ".docx", ".doc", ".txt"]:
+    if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}. Accepted: PDF, DOCX, TXT")
-    contents = await file.read()
+    max_bytes = get_settings().max_upload_mb * 1024 * 1024
+    if file.size and file.size > max_bytes:
+        raise HTTPException(status_code=413, detail=f"File too large. Maximum size is {get_settings().max_upload_mb} MB")
+    contents = await file.read(max_bytes + 1)
+    if len(contents) > max_bytes:
+        raise HTTPException(status_code=413, detail=f"File too large. Maximum size is {get_settings().max_upload_mb} MB")
     unique_name = f"{uuid.uuid4()}{ext}"
     file_path = ResumeParserService.save_upload(contents, unique_name)
     try:
@@ -118,6 +127,12 @@ def delete_resume(resume_id: int, db: Session = Depends(get_db)):
     resume = db.query(Resume).filter(Resume.id == resume_id).first()
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
+    db.query(Analysis).filter(Analysis.resume_id == resume_id).delete()
+    jd_ids = [j.id for j in db.query(JDAnalysis.id).filter(JDAnalysis.resume_id == resume_id).all()]
+    if jd_ids:
+        db.query(CoverLetter).filter(CoverLetter.jd_analysis_id.in_(jd_ids)).delete()
+    db.query(JDAnalysis).filter(JDAnalysis.resume_id == resume_id).delete()
+    db.query(CoverLetter).filter(CoverLetter.resume_id == resume_id).delete()
     if resume.file_path and os.path.exists(resume.file_path):
         os.remove(resume.file_path)
     db.delete(resume)

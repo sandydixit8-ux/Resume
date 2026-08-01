@@ -9,19 +9,22 @@ from app.config import get_settings
 router = APIRouter(tags=["Payment"])
 
 PLANS = {
-    "free": {"id": "free", "name": "Free", "price": 0, "features": ["3 analyses/mo", "Basic ATS", "1 template", "1 cover letter/mo"]},
-    "pro": {"id": "pro", "name": "Pro", "price": 1900, "features": ["Unlimited analyses", "Unlimited builder", "Unlimited cover letters", "JD matching", "AI interview prep", "Priority support"]},
-    "recruiter": {"id": "recruiter", "name": "Recruiter", "price": 9900, "features": ["Everything in Pro", "Unlimited job posts", "AI candidate ranking", "Analytics dashboard", "Team access (5 seats)", "API access"]},
+    "free": {"id": "free", "name": "Free", "price": 0, "currency": "INR", "period": "forever", "features": ["3 resume analyses / month", "Basic ATS score", "1 resume template", "1 cover letter / month", "Community support"]},
+    "pro": {"id": "pro", "name": "Pro", "price": 1900, "currency": "INR", "period": "per month", "features": ["Unlimited analyses", "Unlimited resume builder", "Unlimited cover letters", "JD matching", "AI interview prep", "All premium templates", "Priority support"]},
+    "recruiter": {"id": "recruiter", "name": "Recruiter", "price": 9900, "currency": "INR", "period": "per month", "features": ["Everything in Pro", "Unlimited job posts", "AI candidate ranking", "Resume comparison", "Analytics dashboard", "Team access (5 seats)", "API access"]},
 }
+
+CURRENCY_SYMBOL = {"INR": "₹", "USD": "$"}
 
 @router.get("/api/v1/payment/config")
 def payment_config():
     settings = get_settings()
+    currency = "INR"
     return {
         "stripe_configured": bool(settings.stripe_secret_key),
-        "plans": {
-            k: {"id": v["id"], "name": v["name"], "price": v["price"]} for k, v in PLANS.items()
-        },
+        "currency": currency,
+        "currency_symbol": CURRENCY_SYMBOL.get(currency, "₹"),
+        "plans": PLANS,
     }
 
 @router.post("/api/v1/payment/create-checkout")

@@ -235,7 +235,7 @@ class ResumeParserService:
         ext = Path(file_path).suffix.lower()
         if ext == ".pdf":
             return ResumeParserService.parse_pdf(file_path)
-        elif ext in [".docx", ".doc"]:
+        elif ext == ".docx":
             return ResumeParserService.parse_docx(file_path)
         elif ext == ".txt":
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:

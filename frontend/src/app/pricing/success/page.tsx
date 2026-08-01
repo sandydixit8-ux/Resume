@@ -41,14 +41,14 @@ function SuccessContent() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Link href="/dashboard">
-          <Button className="w-full bg-gradient-brand hover:opacity-90 text-white glow-brand">
+        <Button asChild className="w-full bg-gradient-brand hover:opacity-90 text-white glow-brand">
+          <Link href="/dashboard">
             Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </Link>
-        <Link href="/pricing">
-          <Button variant="outline" className="w-full border-border">Back to Pricing</Button>
-        </Link>
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="w-full border-border">
+          <Link href="/pricing">Back to Pricing</Link>
+        </Button>
       </CardContent>
     </Card>
   )
@@ -58,7 +58,7 @@ export default function PricingSuccessPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      <main className="flex-1 flex items-center justify-center pt-24 pb-12 px-4">
+      <main id="main-content" className="flex-1 flex items-center justify-center pt-24 pb-12 px-4">
         <Suspense fallback={
           <Card className="w-full max-w-md border border-border/50 bg-transparent text-center">
             <CardHeader>

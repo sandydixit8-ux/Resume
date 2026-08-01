@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { FileText, Menu, X, ChevronDown, Shield, Brain } from "lucide-react"
+import { FileText, Menu, X, Shield, Brain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const navItems = {
@@ -33,9 +33,6 @@ export default function Header() {
         </Link>
 
         <nav className="hidden lg:flex items-center gap-6">
-          <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
-            Dashboard
-          </Link>
           <Link href="/analyze" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
             Analyzer
           </Link>
@@ -54,30 +51,36 @@ export default function Header() {
         </nav>
 
         <div className="hidden lg:flex items-center gap-2">
-          <Link href="/interview">
-            <Button size="sm" className="bg-gradient-cyan hover:opacity-90 text-white glow-cyan">
+          <Button asChild size="sm" className="bg-gradient-cyan hover:opacity-90 text-white glow-cyan">
+            <Link href="/interview">
               <Brain className="mr-1.5 h-3.5 w-3.5" /> Interview Prep
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button size="sm" className="bg-gradient-brand hover:opacity-90 text-white glow-brand">
-              Dashboard <ChevronDown className="ml-1 h-3 w-3" />
-            </Button>
-          </Link>
-          <Link href="/admin/login">
-            <Button size="sm" variant="outline" className="border-border text-muted-foreground hover:text-foreground">
+            </Link>
+          </Button>
+          <Button asChild size="sm" className="bg-gradient-brand hover:opacity-90 text-white glow-brand">
+            <Link href="/dashboard">
+              Dashboard
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline" className="border-border text-muted-foreground hover:text-foreground">
+            <Link href="/admin/login">
               <Shield className="mr-1.5 h-3.5 w-3.5" /> Login
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
 
-        <button onClick={() => setOpen(!open)} className="lg:hidden p-2 text-muted-foreground hover:text-foreground">
+        <button
+          onClick={() => setOpen(!open)}
+          className="lg:hidden p-2 text-muted-foreground hover:text-foreground"
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          aria-controls="mobile-nav"
+        >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
       {open && (
-        <div className="lg:hidden border-t border-border/50 bg-background/95 backdrop-blur-md">
+        <div id="mobile-nav" className="lg:hidden border-t border-border/50 bg-background/95 backdrop-blur-md">
           <div className="container mx-auto px-4 py-4 flex flex-col gap-3">
             <Link href="/dashboard" className="text-sm font-medium py-2 hover:text-gradient" onClick={() => setOpen(false)}>Dashboard</Link>
             <Link href="/analyze" className="text-sm font-medium py-2 hover:text-gradient" onClick={() => setOpen(false)}>Resume Analyzer</Link>

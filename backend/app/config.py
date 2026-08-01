@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     cors_origins: str = "*"
     anthropic_api_key: str = ""
     upload_dir: str = "./uploads"
+    max_upload_mb: int = 10
     admin_username: str = "admin"
     admin_password: str = "admin123"
     admin_email: str = ""

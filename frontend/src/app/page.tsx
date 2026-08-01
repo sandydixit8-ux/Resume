@@ -1,11 +1,13 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import { getPaymentConfig } from "@/lib/api"
 import {
   ArrowRight, Sparkles, FileText, Search, Edit, FileCheck, Target, Zap, ChevronRight,
   Check, Brain, BarChart3, Upload, TrendingUp, Download,
@@ -86,7 +88,7 @@ const steps = [
 const plans = [
   {
     name: "Free",
-    price: "$0",
+    price: "₹0",
     period: "forever",
     desc: "Perfect for trying things out",
     features: [
@@ -102,7 +104,7 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "$19",
+    price: "₹1,900",
     period: "per month",
     desc: "For serious job seekers",
     features: [
@@ -120,7 +122,7 @@ const plans = [
   },
   {
     name: "Recruiter",
-    price: "$99",
+    price: "₹9,900",
     period: "per month",
     desc: "For hiring teams",
     features: [
@@ -138,12 +140,44 @@ const plans = [
   },
 ]
 
+const planIds: Record<string, string> = { Free: "free", Pro: "pro", Recruiter: "recruiter" }
+
+function formatPrice(amount: number, symbol: string) {
+  return `${symbol}${amount.toLocaleString("en-IN")}`
+}
+
 export default function LandingPage() {
+  const [backendPlans, setBackendPlans] = useState<Record<string, { price: number; period: string; features: string[] }> | null>(null)
+  const [currencySymbol, setCurrencySymbol] = useState("₹")
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const config = await getPaymentConfig()
+        setBackendPlans(config.plans)
+        setCurrencySymbol(config.currency_symbol || "₹")
+      } catch {}
+    })()
+  }, [])
+
+  const displayPlans = plans.map((p) => {
+    const backend = backendPlans?.[planIds[p.name]]
+    if (backend) {
+      return {
+        ...p,
+        price: formatPrice(backend.price, currencySymbol),
+        period: backend.period || p.period,
+        features: backend.features.length > 0 ? backend.features : p.features,
+      }
+    }
+    return p
+  })
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <section className="relative min-h-[90vh] flex items-center overflow-hidden pt-24">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-950/20 to-transparent" />
           <div className="absolute top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse-glow" />
@@ -170,16 +204,16 @@ export default function LandingPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up">
-                <Link href="/dashboard">
-                  <Button size="lg" className="text-base px-8 py-6 bg-gradient-brand hover:opacity-90 text-white shadow-xl glow-brand">
+                <Button asChild size="lg" className="text-base px-8 py-6 bg-gradient-brand hover:opacity-90 text-white shadow-xl glow-brand">
+                  <Link href="/dashboard">
                     Start Free <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="#features">
-                  <Button size="lg" variant="outline" className="text-base px-8 py-6 border-border text-foreground hover:bg-muted/50">
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="text-base px-8 py-6 border-border text-foreground hover:bg-muted/50">
+                  <Link href="#features">
                     Learn More
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </div>
           </div>
@@ -275,7 +309,7 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              {plans.map((p, i) => (
+              {displayPlans.map((p, i) => (
                 <Card
                   key={i}
                   className={`relative overflow-hidden border ${
@@ -307,17 +341,17 @@ export default function LandingPage() {
                         </li>
                       ))}
                     </ul>
-                    <Link href={p.href}>
-                      <Button
-                        className={`w-full ${
-                          p.highlighted
-                            ? "bg-gradient-brand hover:opacity-90 text-white glow-brand"
-                            : "bg-muted hover:bg-muted/80 text-foreground"
-                        }`}
-                      >
+                    <Button asChild
+                      className={`w-full ${
+                        p.highlighted
+                          ? "bg-gradient-brand hover:opacity-90 text-white glow-brand"
+                          : "bg-muted hover:bg-muted/80 text-foreground"
+                      }`}
+                    >
+                      <Link href={p.href}>
                         {p.cta} {p.highlighted && <ChevronRight className="ml-2 h-4 w-4" />}
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -339,16 +373,16 @@ export default function LandingPage() {
                 Join thousands of job seekers who landed interviews with AI-optimized resumes.
               </p>
               <div className="relative flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/dashboard">
-                  <Button size="lg" className="text-base px-10 py-6 bg-gradient-brand hover:opacity-90 text-white shadow-xl glow-brand">
+                <Button asChild size="lg" className="text-base px-10 py-6 bg-gradient-brand hover:opacity-90 text-white shadow-xl glow-brand">
+                  <Link href="/dashboard">
                     Get Started Free <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="/analyze">
-                  <Button size="lg" variant="outline" className="text-base px-10 py-6 border-border">
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="text-base px-10 py-6 border-border">
+                  <Link href="/analyze">
                     Analyze Resume <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </div>
           </div>

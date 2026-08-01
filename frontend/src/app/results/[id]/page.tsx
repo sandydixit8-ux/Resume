@@ -153,9 +153,9 @@ export default function ResultsPage() {
           <XCircle className="h-10 w-10 text-red-500" />
         </div>
         <p className="text-lg font-medium">{error}</p>
-        <Link href="/analyze">
-          <Button variant="outline">Try Again</Button>
-        </Link>
+        <Button asChild variant="outline">
+          <Link href="/analyze">Try Again</Link>
+        </Button>
       </div>
     )
   }
@@ -178,7 +178,7 @@ export default function ResultsPage() {
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      <main className="flex-1 pt-20 pb-12">
+      <main id="main-content" className="flex-1 pt-20 pb-12">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="grid lg:grid-cols-3 gap-6">

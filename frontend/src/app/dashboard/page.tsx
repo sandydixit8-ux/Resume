@@ -47,7 +47,7 @@ export default function DashboardPage() {
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      <main className="flex-1 pt-24 pb-12">
+      <main id="main-content" className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-8">
@@ -55,11 +55,11 @@ export default function DashboardPage() {
                 <h1 className="text-3xl font-bold">Dashboard</h1>
                 <p className="text-muted-foreground mt-1">Your resume analysis overview</p>
               </div>
-              <Link href="/analyze">
-                <Button className="bg-gradient-brand hover:opacity-90 text-white glow-brand">
+              <Button asChild className="bg-gradient-brand hover:opacity-90 text-white glow-brand">
+                <Link href="/analyze">
                   <Plus className="mr-2 h-4 w-4" /> New Analysis
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -161,11 +161,11 @@ export default function DashboardPage() {
                   <BarChart3 className="h-10 w-10 text-muted-foreground/40 mb-3" />
                   <p className="text-muted-foreground text-sm">No activity yet</p>
                   <p className="text-muted-foreground text-xs mt-1">Start by analyzing your first resume</p>
-                  <Link href="/analyze" className="mt-4">
-                    <Button size="sm" className="bg-gradient-brand hover:opacity-90 text-white glow-brand">
+                  <Button asChild size="sm" className="mt-4 bg-gradient-brand hover:opacity-90 text-white glow-brand">
+                    <Link href="/analyze">
                       Analyze Resume <ArrowRight className="ml-2 h-3 w-3" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             </div>

@@ -18,7 +18,7 @@ export default function RecruiterPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      <main className="flex-1 pt-24 pb-12">
+      <main id="main-content" className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-sm font-medium text-emerald-300 mb-4">
@@ -53,12 +53,12 @@ export default function RecruiterPage() {
                 For now, use the resume analyzer and JD matching tools to evaluate candidates.
               </p>
               <div className="flex gap-3 justify-center">
-                <Link href="/analyze">
-                  <Button className="bg-gradient-brand hover:opacity-90 text-white glow-brand">Analyze Resume</Button>
-                </Link>
-                <Link href="/jd-match">
-                  <Button variant="outline">JD Matching</Button>
-                </Link>
+                <Button asChild className="bg-gradient-brand hover:opacity-90 text-white glow-brand">
+                  <Link href="/analyze">Analyze Resume</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/jd-match">JD Matching</Link>
+                </Button>
               </div>
             </CardContent>
           </Card>
