@@ -2,12 +2,13 @@
 # Replace yourdomain.com with your real domain, then:
 #   caddy run --config Caddyfile   (or: sudo systemctl enable --now caddy)
 #
-# All traffic: browser -> Caddy (HTTPS) -> Next.js (:3000) -> rewrites -> FastAPI (:8000)
-# Because Next.js proxies /api/v1 internally, this single site block is all you need.
+# Traffic: browser -> Caddy (HTTPS) -> frontend -> /api/v1 rewrites -> backend
+# Bare-metal (systemd): frontend on 127.0.0.1:3000 (default, no env needed).
+# Docker (compose): set UPSTREAM_FRONTEND=frontend:3000 (compose does this).
 
 yourdomain.com {
     encode zstd gzip
-    reverse_proxy 127.0.0.1:3000
+    reverse_proxy {$UPSTREAM_FRONTEND:127.0.0.1:3000}
 }
 
 # Optional: expose the API directly for external integrations (e.g. the API-access

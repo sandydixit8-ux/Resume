@@ -1,0 +1,53 @@
+# ResumeIQ AI — Docker deployment (alternative to the systemd method).
+#
+# Usage (run from this repo root):
+#   docker compose -f deploy/docker-compose.yml up -d --build
+#
+# Notes:
+#   - The backend reads ../backend/.env for settings. For Docker, set the paths to
+#     the named volume:
+#         DATABASE_URL=sqlite:////data/dpiic.db
+#         UPLOAD_DIR=/data/uploads
+#   - Persist your real secrets in ../backend/.env (see .env.production.example).
+#   - Caddy auto-provisions HTTPS for the domain in deploy/Caddyfile.
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    env_file:
+      - ../backend/.env
+    volumes:
+      - resumeiq_data:/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+    environment:
+      - BACKEND_INTERNAL_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - UPSTREAM_FRONTEND=frontend:3000
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  resumeiq_data:
+  caddy_data:
+  caddy_config:
