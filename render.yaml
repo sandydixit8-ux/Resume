@@ -1,0 +1,91 @@
+# ResumeIQ AI — Render Blueprint (deploys backend + frontend in one click)
+# How to use:
+#   1. Push this file to GitHub (repo root).
+#   2. In Render: New +  "Blueprint" -> select the repo.
+#   3. Fill the two secrets marked "fill after creation":
+#        - ADMIN_PASSWORD      (admin login password)
+#        - ANTHROPIC_API_KEY   (Anthropic key powering the AI features)
+#   4. Apply -> Render builds and runs both services.
+#
+# NOTE: Free instances sleep when idle, so the first request after a pause is slow.
+
+services:
+  # ---------------- Backend (FastAPI) ----------------
+  - type: web
+    name: resumeiq-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    healthCheckPath: /api/v1/health
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    disk:
+      name: resumeiq-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      # Secrets: fill these in the Render dashboard after the blueprint is created.
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Generate a random secret for token signing.
+      - key: SECRET_KEY
+        generateValue: true
+      # Persistent DB + uploads live on the attached disk.
+      - key: DATABASE_URL
+        value: sqlite:////var/data/dpiic.db
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      # App / auth defaults.
+      - key: APP_NAME
+        value: ResumeIQ AI
+      - key: APP_VERSION
+        value: 1.0.0
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_EMAIL
+        value: ridhyanshtechinfra@gmail.com
+      # CORS + frontend URL auto-follow the frontend service's public URL.
+      - key: CORS_ORIGINS
+        fromService:
+          type: web
+          name: resumeiq-frontend
+          property: url
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: resumeiq-frontend
+          property: url
+      # SMTP (optional - leave unset to disable admin password-reset email).
+      - key: SMTP_SERVER
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      # Stripe (optional - leave unset to stay in demo mode).
+      - key: STRIPE_PRICE_PRO_MONTHLY
+        value: price_pro_monthly
+      - key: STRIPE_PRICE_RECRUITER_MONTHLY
+        value: price_recruiter_monthly
+      - key: STRIPE_PRICE_PRO_MONTHLY_USD
+        value: price_pro_monthly_usd
+      - key: STRIPE_PRICE_RECRUITER_MONTHLY_USD
+        value: price_recruiter_monthly_usd
+
+  # ---------------- Frontend (Next.js) ----------------
+  - type: web
+    name: resumeiq-frontend
+    runtime: node
+    rootDir: frontend
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npx next start -p $PORT
+    envVars:
+      # Backend reachable over Render's private network (same region).
+      # If the backend is public-only, change to: https://resumeiq-backend.onrender.com
+      - key: BACKEND_INTERNAL_URL
+        value: http://resumeiq-backend:10000
