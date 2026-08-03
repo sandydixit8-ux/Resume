@@ -1,0 +1,27 @@
+# ResumeIQ AI - Netlify config (frontend only)
+# The Python backend CANNOT run on Netlify. Deploy it on Render (render.yaml)
+# or an Oracle free VM (deploy/ORACLE_FREE_DEPLOY.md), then set the env var
+#   BACKEND_INTERNAL_URL = https://<your-backend-url>
+# in Netlify (Site settings -> Environment variables). The site proxies
+# /api/v1/* to that URL automatically.
+
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+
+[build.environment]
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Next.js runtime (handles SSR routes like /results/[id])
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Security headers (same as next.config.ts)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    X-DNS-Prefetch-Control = "on"
