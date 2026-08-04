@@ -1,4 +1,12 @@
-# ResumeIQ frontend — build from repo root:  docker build -f deploy/Dockerfile.frontend -t resumeiq-frontend .
+# ============================================================
+# ResumeIQ AI - FRONTEND production image (Next.js)
+#
+# Build (from repo root):
+#   docker build -f deploy/Dockerfile.frontend -t resumeiq-frontend .
+# Run: docker compose -f deploy/docker-compose.yml up -d --build
+# ============================================================
+
+# --- Stage 1: install deps + build ---
 FROM node:22-alpine AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -8,18 +16,32 @@ RUN npm ci
 
 COPY frontend/ ./
 RUN npm run build
+# Drop dev dependencies for a smaller production runtime
+RUN npm prune --omit=dev
 
+# --- Stage 2: minimal production runtime ---
 FROM node:22-alpine
 WORKDIR /app
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000
 
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/public ./public
 COPY --from=build /app/next.config.ts ./next.config.ts
+COPY --from=build /app/tsconfig.json ./tsconfig.json
+COPY --from=build /app/next-env.d.ts ./next-env.d.ts
+COPY --from=build /app/public ./public
+
+# Run as unprivileged user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+    && chown -R appuser:appgroup /app
+USER appuser
 
 EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:3000/ >/dev/null 2>&1 || exit 1
 
 CMD ["npx", "next", "start", "-p", "3000"]
