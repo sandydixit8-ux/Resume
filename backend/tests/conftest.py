@@ -8,6 +8,10 @@ os.environ["UPLOAD_DIR"] = os.path.join(_temp, "uploads")
 os.environ["CORS_ORIGINS"] = "http://localhost:3000,http://127.0.0.1:3000"
 os.environ["APP_NAME"] = "ResumeIQ AI"
 os.environ["APP_VERSION"] = "1.0.0"
+# Tests must never hit a real LLM provider: force keys off before the app
+# (and its cached Settings) is first imported.
+os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["GROQ_API_KEY"] = ""
 
 import pytest
 from fastapi.testclient import TestClient

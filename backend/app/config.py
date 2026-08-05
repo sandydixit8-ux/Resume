@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     cors_origins: str = "*"
     anthropic_api_key: str = ""
+    groq_api_key: str = ""
     upload_dir: str = "./uploads"
     max_upload_mb: int = 10
     admin_username: str = "admin"

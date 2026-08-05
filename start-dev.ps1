@@ -33,7 +33,14 @@ if (-not (Test-PortFree $backendPort)) {
 
 # 2) Start backend in its own window
 Write-Host "Starting backend on http://localhost:$backendPort ..."
-Start-Process cmd -ArgumentList "/c","start `"resumeiq-backend`" /min cmd /c `"cd /d $backendDir && $python -m uvicorn app.main:app --host 127.0.0.1 --port $backendPort > server_out.log 2>&1`""
+$beOut = Join-Path $backendDir "server_out.log"
+$beErr = Join-Path $backendDir "server_error.log"
+Start-Process -FilePath $python `
+  -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "$backendPort") `
+  -WorkingDirectory $backendDir `
+  -RedirectStandardOutput $beOut `
+  -RedirectStandardError $beErr `
+  -WindowStyle Hidden
 
 # 3) Wait for the backend to accept connections (fast TCP probe), then verify it is the real ResumeIQ app
 Write-Host "Waiting for backend..."
@@ -66,7 +73,10 @@ Write-Host "Backend up: $($o.info.title)"
 # 4) Start frontend on 3000, pointed at the chosen backend port
 if (Test-PortFree 3000) {
   Write-Host "Starting frontend on http://localhost:3000 (backend $backendPort)..."
-  Start-Process cmd -ArgumentList "/c","start `"resumeiq-frontend`" /min cmd /c `"set `"BACKEND_INTERNAL_URL=http://localhost:$backendPort`" && cd /d $frontendDir && npm.cmd run dev > dev_out.log 2>&1`""
+  Start-Process -FilePath "cmd.exe" `
+    -ArgumentList @("/c", "set `"BACKEND_INTERNAL_URL=http://localhost:$backendPort`" && npm.cmd run dev > dev_out.log 2>&1") `
+    -WorkingDirectory $frontendDir `
+    -WindowStyle Hidden
 } else {
   Write-Host "WARNING: port 3000 is already in use. If it is an old ResumeIQ frontend, restart it:" -ForegroundColor Yellow
   Write-Host "  set BACKEND_INTERNAL_URL=http://localhost:$backendPort && npm run dev (in $frontendDir)"

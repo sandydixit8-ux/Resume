@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -11,8 +11,9 @@ import Footer from "@/components/footer"
 import {
   Lightbulb, Sparkles, Mic, BookOpen, ListChecks, Loader2,
   Brain, Target, ChevronDown, ChevronUp, RefreshCw, Upload, FileText,
+  X, CheckCircle2, FileUp,
 } from "lucide-react"
-import { getInterviewQuestions, getInterviewQuestionsFromText } from "@/lib/api"
+import { getInterviewQuestions, getInterviewQuestionsFromText, uploadResume } from "@/lib/api"
 
 const categoryConfig: Record<string, { icon: any; label: string; color: string }> = {
   resume: { icon: BookOpen, label: "Resume-Based", color: "text-emerald-400" },
@@ -23,9 +24,15 @@ const categoryConfig: Record<string, { icon: any; label: string; color: string }
 }
 
 export default function InterviewPage() {
+  const [mode, setMode] = useState<"text" | "upload" | "id">("text")
   const [resumeId, setResumeId] = useState("")
   const [resumeText, setResumeText] = useState("")
-  const [useResumeId, setUseResumeId] = useState(false)
+  const [uploadedId, setUploadedId] = useState<number | null>(null)
+  const [uploadedName, setUploadedName] = useState("")
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [jdText, setJdText] = useState("")
   const [questions, setQuestions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -33,15 +40,39 @@ export default function InterviewPage() {
   const [expanded, setExpanded] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState("all")
 
+  async function handleFile(file: File) {
+    const ext = (file.name.split(".").pop() || "").toLowerCase()
+    if (!["pdf", "docx", "txt"].includes(ext)) {
+      setUploadError("Unsupported file type. Please upload a PDF, DOCX, or TXT file.")
+      return
+    }
+    setUploading(true); setUploadError(null); setQuestions([])
+    try {
+      const r = await uploadResume(file)
+      setUploadedId(r.id)
+      setUploadedName(file.name)
+    } catch (err: any) {
+      setUploadError(err.message || "Upload failed")
+      setUploadedId(null); setUploadedName("")
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
   async function handleGenerate() {
     const hasText = resumeText.trim().length > 0
     const hasId = resumeId.trim().length > 0
-    if (useResumeId ? !hasId : !hasText) return
+    if (mode === "text" && !hasText) return
+    if (mode === "upload" && !uploadedId) return
+    if (mode === "id" && !hasId) return
     setLoading(true); setError(null); setQuestions([])
     try {
-      const r = useResumeId
+      const r = mode === "id"
         ? await getInterviewQuestions(Number(resumeId), jdText || undefined)
-        : await getInterviewQuestionsFromText(resumeText, jdText || undefined)
+        : mode === "upload" && uploadedId
+          ? await getInterviewQuestions(uploadedId, jdText || undefined)
+          : await getInterviewQuestionsFromText(resumeText, jdText || undefined)
       setQuestions(r.questions || [])
     } catch (err: any) { setError(err.message) }
     finally { setLoading(false) }
@@ -49,6 +80,12 @@ export default function InterviewPage() {
 
   const categories = [...new Set(questions.map(q => q.category))]
   const filtered = activeTab === "all" ? questions : questions.filter(q => q.category === activeTab)
+
+  const canGenerate = mode === "text"
+    ? resumeText.trim().length > 0
+    : mode === "upload"
+      ? !!uploadedId
+      : resumeId.trim().length > 0
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -76,36 +113,119 @@ export default function InterviewPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Your Resume</label>
-                <Textarea
-                  placeholder="Paste your resume text here... e.g. Senior Software Engineer with 6 years of experience..."
-                  className="min-h-[160px] bg-background/50 font-mono text-xs"
-                  value={resumeText}
-                  onChange={(e) => setResumeText(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground mt-1">Works standalone — no resume ID needed</p>
-              </div>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setUseResumeId(!useResumeId)}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
-                >
-                  <FileText className="h-3 w-3" /> {useResumeId ? "Use pasted resume text instead" : "Have a resume ID from analysis? Use it instead"}
-                </button>
-              </div>
-              {useResumeId && (
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Resume ID</label>
-                  <input
-                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-                    placeholder="Enter resume ID from analysis"
-                    value={resumeId}
-                    onChange={(e) => setResumeId(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Don&apos;t have one? <a href="/analyze" className="text-emerald-400 hover:text-emerald-300">Analyze a resume first</a></p>
+                <label className="text-sm font-medium mb-2 block">Your Resume</label>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setMode("text")}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                      mode === "text" ? "border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 text-emerald-300" : "border-border/50 text-muted-foreground hover:border-border"
+                    }`}
+                  >
+                    <FileText className="h-3.5 w-3.5" /> Paste Text
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("upload")}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                      mode === "upload" ? "border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 text-emerald-300" : "border-border/50 text-muted-foreground hover:border-border"
+                    }`}
+                  >
+                    <Upload className="h-3.5 w-3.5" /> Upload File
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("id")}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                      mode === "id" ? "border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 text-emerald-300" : "border-border/50 text-muted-foreground hover:border-border"
+                    }`}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" /> Resume ID
+                  </button>
                 </div>
-              )}
+
+                {mode === "text" && (
+                  <>
+                    <Textarea
+                      placeholder="Paste your resume text here... e.g. Senior Software Engineer with 6 years of experience..."
+                      className="min-h-[160px] bg-background/50 font-mono text-xs"
+                      value={resumeText}
+                      onChange={(e) => setResumeText(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Works standalone — no resume ID needed</p>
+                  </>
+                )}
+
+                {mode === "upload" && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx,.txt"
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+                    />
+                    {uploadedId ? (
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-emerald-300 truncate">{uploadedName}</p>
+                            <p className="text-xs text-muted-foreground">Resume ID: {uploadedId} — ready to generate</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setUploadedId(null); setUploadedName("") }}
+                          className="text-muted-foreground hover:text-red-400 shrink-0"
+                          aria-label="Remove uploaded resume"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                        onDragLeave={() => setDragOver(false)}
+                        onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f) }}
+                        className={`w-full rounded-lg border-2 border-dashed px-4 py-8 flex flex-col items-center justify-center gap-2 text-sm transition-colors ${
+                          dragOver ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-300" : "border-border/60 text-muted-foreground hover:border-emerald-500/40 hover:text-emerald-300"
+                        }`}
+                      >
+                        {uploading ? (
+                          <>
+                            <Loader2 className="h-6 w-6 animate-spin text-emerald-400" />
+                            <span>Uploading and parsing resume...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileUp className="h-6 w-6" />
+                            <span className="font-medium">Click to upload or drag &amp; drop</span>
+                            <span className="text-xs">PDF, DOCX, or TXT (max 10 MB)</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {uploadError && (
+                      <p className="text-xs text-red-400 mt-2">{uploadError}</p>
+                    )}
+                  </>
+                )}
+
+                {mode === "id" && (
+                  <div>
+                    <input
+                      className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+                      placeholder="Enter resume ID from analysis"
+                      value={resumeId}
+                      onChange={(e) => setResumeId(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Don&apos;t have one? <a href="/analyze" className="text-emerald-400 hover:text-emerald-300">Analyze a resume first</a></p>
+                  </div>
+                )}
+              </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Job Description (optional)</label>
                 <Textarea
@@ -115,7 +235,7 @@ export default function InterviewPage() {
                   onChange={(e) => setJdText(e.target.value)}
                 />
               </div>
-              <Button onClick={handleGenerate} disabled={loading || (useResumeId ? !resumeId.trim() : !resumeText.trim())} className="w-full bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
+              <Button onClick={handleGenerate} disabled={loading || !canGenerate} className="w-full bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
                 {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</> : <><Sparkles className="mr-2 h-4 w-4" /> Generate Interview Questions</>}
               </Button>
             </CardContent>

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.resume import Resume
-from app.services.ai_client import ai_available
+from app.services.ai_client import ai_available, ai_provider
 from app.services import ai_rewriter
 
 router = APIRouter(tags=["AI"])
@@ -19,7 +19,7 @@ def _load_parsed(resume_id: int, db: Session) -> tuple[Resume, dict]:
 
 @router.get("/ai/status")
 def ai_status():
-    return {"ai_configured": ai_available()}
+    return {"ai_configured": ai_available(), "provider": ai_provider()}
 
 
 @router.post("/ai/achievements/{resume_id}")

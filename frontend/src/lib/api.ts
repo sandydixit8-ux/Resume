@@ -1,5 +1,37 @@
 const API_BASE = ""
 
+const FALLBACK_COUNTRY_RULES: Record<string, { name: string; fields: string[]; tips: string; photo: string; template: string }> = {
+  us: { name: "United States", fields: [], tips: "No photo, age, marital status, religion or personal details. Lead with a keyword-rich summary.", photo: "no", template: "modern" },
+  ca: { name: "Canada", fields: ["work_authorization"], tips: "Quantify achievements. No photo or personal details. Mention work authorization status if relevant.", photo: "no", template: "professional" },
+  gb: { name: "United Kingdom", fields: [], tips: "Two-page CVs are common. Include a personal profile and key skills section.", photo: "no", template: "professional" },
+  au: { name: "Australia", fields: [], tips: "Include a professional summary and key achievements. 'Selection criteria' style for government roles.", photo: "no", template: "executive" },
+  nz: { name: "New Zealand", fields: ["work_authorization"], tips: "Keep it to 2-3 pages. Emphasise visa/work rights early if applying from abroad.", photo: "no", template: "minimal" },
+  de: { name: "Germany", fields: ["date_of_birth", "nationality"], tips: "Photo optional, standard in Germany. Include date of birth, nationality and detailed skills.", photo: "optional", template: "professional" },
+  fr: { name: "France", fields: [], tips: "Photo optional. Include a short 'Profil' and computer/software skills. Two-page CV is standard.", photo: "optional", template: "europass" },
+  nl: { name: "Netherlands", fields: ["work_authorization"], tips: "Direct, concise. Include visa/work permission status for non-EU applicants.", photo: "optional", template: "minimal" },
+  ch: { name: "Switzerland", fields: ["date_of_birth", "nationality", "work_authorization"], tips: "Photo standard. Include date of birth, nationality, languages and work permit status.", photo: "yes", template: "professional" },
+  ie: { name: "Ireland", fields: ["work_authorization"], tips: "No photo. Mention EU/visa work rights if applicable.", photo: "no", template: "professional" },
+  se: { name: "Sweden", fields: ["work_authorization"], tips: "Keep it factual and modest. Include languages and work permit status for non-EU applicants.", photo: "no", template: "minimal" },
+  no: { name: "Norway", fields: ["nationality", "work_authorization"], tips: "Include nationality and work visa status for non-EEA applicants.", photo: "no", template: "minimal" },
+  dk: { name: "Denmark", fields: ["nationality", "work_authorization"], tips: "Keep to 2 pages. Include citizenship/work permit details if applying from abroad.", photo: "no", template: "modern" },
+  fi: { name: "Finland", fields: ["work_authorization"], tips: "Include language proficiency levels and residence/work permit status.", photo: "no", template: "minimal" },
+  be: { name: "Belgium", fields: ["nationality"], tips: "Include languages (NL/FR/DE) and nationality. Photo optional.", photo: "optional", template: "europass" },
+  lu: { name: "Luxembourg", fields: ["work_authorization"], tips: "Languages matter most (LU/FR/DE/EN). Include work permit status for non-EU.", photo: "optional", template: "europass" },
+  at: { name: "Austria", fields: ["date_of_birth", "nationality"], tips: "Photo optional. Include date of birth, nationality and detailed skills.", photo: "optional", template: "professional" },
+  ae: { name: "UAE", fields: ["photo", "nationality", "visa_status", "driving_license", "current_location", "notice_period"], tips: "Photo standard. Always show nationality, visa status, current location, notice period and GCC experience.", photo: "yes", template: "executive" },
+  sa: { name: "Saudi Arabia", fields: ["photo", "nationality", "visa_status", "current_location", "notice_period"], tips: "Photo standard. Show nationality, visa status, current location, notice period and Saudi/GCC experience.", photo: "yes", template: "executive" },
+  qa: { name: "Qatar", fields: ["photo", "nationality", "visa_status", "current_location", "notice_period"], tips: "Photo standard. Include nationality, visa status, current location and notice period.", photo: "yes", template: "executive" },
+  om: { name: "Oman", fields: ["photo", "nationality", "visa_status", "notice_period"], tips: "Photo standard. Include nationality, visa status and notice period.", photo: "yes", template: "professional" },
+  bh: { name: "Bahrain", fields: ["photo", "nationality", "visa_status", "notice_period"], tips: "Photo standard. Include nationality, visa status and notice period.", photo: "yes", template: "professional" },
+  kw: { name: "Kuwait", fields: ["photo", "nationality", "visa_status", "notice_period"], tips: "Photo standard. Include nationality, visa status and notice period.", photo: "yes", template: "professional" },
+  sg: { name: "Singapore", fields: [], tips: "No photo. Lead with a strong summary and leadership/impact statements. 2 pages acceptable.", photo: "no", template: "modern" },
+  my: { name: "Malaysia", fields: ["nationality"], tips: "Photo optional. Include languages and nationality.", photo: "optional", template: "modern" },
+  hk: { name: "Hong Kong", fields: ["visa_status"], tips: "Photo optional. Include Chinese + English versions, languages, and visa status.", photo: "optional", template: "modern" },
+  jp: { name: "Japan", fields: ["photo", "date_of_birth", "nationality", "visa_status"], tips: "Photo standard. Include date of birth, nationality, visa status and Japanese language level.", photo: "yes", template: "professional" },
+  kr: { name: "South Korea", fields: ["photo", "date_of_birth", "nationality"], tips: "Photo standard. Include date of birth, nationality and Korean language level.", photo: "yes", template: "professional" },
+  in: { name: "India", fields: ["current_location", "notice_period"], tips: "Photo optional. Mention current location, notice period and work authorization for foreign roles.", photo: "optional", template: "professional" },
+}
+
 export async function uploadResume(file: File) {
   const formData = new FormData()
   formData.append("file", file)
@@ -231,15 +263,32 @@ export function aiLinkedin(resumeId: number, jdText?: string) {
 }
 
 export async function getCountries() {
-  const res = await fetch(`${API_BASE}/api/v1/countries`)
-  if (!res.ok) throw new Error(await res.text())
-  return res.json()
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/countries`)
+    if (!res.ok) throw new Error(await res.text())
+    return res.json()
+  } catch {
+    return { countries: Object.entries(FALLBACK_COUNTRY_RULES).map(([code, r]) => ({ code, name: r.name, fields: r.fields })) }
+  }
 }
 
 export async function getCountry(code: string) {
-  const res = await fetch(`${API_BASE}/api/v1/countries/${encodeURIComponent(code)}`)
-  if (!res.ok) throw new Error(await res.text())
-  return res.json()
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/countries/${encodeURIComponent(code)}`)
+    if (!res.ok) throw new Error(await res.text())
+    return res.json()
+  } catch {
+    const r = FALLBACK_COUNTRY_RULES[code] || FALLBACK_COUNTRY_RULES.us
+    return {
+      country: {
+        ...r,
+        code: FALLBACK_COUNTRY_RULES[code] ? code : "us",
+        format: "Reverse chronological, ATS-friendly",
+        page_limit: "1-2 pages",
+        sections: ["summary", "skills", "experience", "certifications", "education", "languages"],
+      },
+    }
+  }
 }
 
 export async function exportResume(params: {
