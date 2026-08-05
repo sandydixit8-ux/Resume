@@ -18,6 +18,12 @@ backend/.pytest_cache/
 frontend/node_modules/
 frontend/.next/
 
+# dpiic-backend
+dpiic-backend/*.db
+dpiic-backend/*.db-shm
+dpiic-backend/*.db-wal
+dpiic-backend/.pytest_cache/
+
 # Env files
 .env
 .env.*

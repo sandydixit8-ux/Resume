@@ -1,0 +1,2868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DPIIC — Mineral Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+:root{
+  --basalt:#0c1a20;
+  --basalt-2:#122530;
+  --panel:#16262e;
+  --panel-2:#1c2f38;
+  --stroke:#2a3f48;
+  --copper:#c1793f;
+  --copper-soft:#8c5a30;
+  --teal:#4fa8a3;
+  --malachite:#5f9e79;
+  --amber:#e0a458;
+  --text:#eceee8;
+  --text-dim:#a9bcc0;
+  --text-faint:#6d838a;
+  --contour: rgba(79,168,163,0.08);
+  --radius:3px;
+  font-family:'IBM Plex Sans', sans-serif;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  background:var(--basalt);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+h1,h2,h3,h4,.display{ font-family:'Space Grotesk', sans-serif; letter-spacing:-0.01em; }
+.mono{ font-family:'IBM Plex Mono', monospace; }
+::selection{ background:var(--copper); color:var(--basalt); }
+button{ font-family:inherit; cursor:pointer; }
+a{ color:inherit; text-decoration:none; }
+
+/* contour texture used as ambient backdrop */
+.contour-bg{
+  position:absolute; inset:0; z-index:0; pointer-events:none;
+  background-image:
+    repeating-radial-gradient(circle at 15% 20%, transparent 0, transparent 38px, var(--contour) 39px, var(--contour) 40px),
+    repeating-radial-gradient(circle at 85% 75%, transparent 0, transparent 52px, var(--contour) 53px, var(--contour) 54px);
+  opacity:0.6;
+}
+
+/* ============ SCREEN SWITCHER ============ */
+.screen{ display:none; min-height:100vh; position:relative; }
+.screen.active{ display:block; }
+
+/* ============ PUBLIC PORTAL ============ */
+#public{ background:var(--basalt); }
+.pub-header{
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 40px;
+  background:rgba(12,26,32,0.9);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--stroke);
+}
+.brand{ display:flex; align-items:center; gap:12px; }
+.brand-mark{
+  width:34px; height:34px; border-radius:50%;
+  background:conic-gradient(from 210deg, var(--copper), var(--teal), var(--malachite), var(--copper));
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Space Grotesk'; font-weight:700; font-size:13px; color:var(--basalt);
+}
+.brand-name{ font-size:15px; font-weight:600; letter-spacing:0.04em; }
+.brand-sub{ font-size:10px; color:var(--text-faint); letter-spacing:0.12em; text-transform:uppercase; margin-top:1px;}
+.pub-nav{ display:flex; gap:30px; align-items:center; }
+.pub-nav a{ font-size:13px; color:var(--text-dim); transition:color .15s; }
+.pub-nav a:hover{ color:var(--text); }
+.btn-login{
+  background:var(--copper); color:var(--basalt); font-weight:600; font-size:13px;
+  padding:9px 20px; border-radius:var(--radius); border:none;
+}
+.btn-login:hover{ background:#d4885049; }
+
+.hero{
+  position:relative; padding:96px 40px 90px; overflow:hidden;
+  border-bottom:1px solid var(--stroke);
+}
+.hero-eyebrow{
+  font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--teal); margin-bottom:22px; display:flex; align-items:center; gap:10px;
+}
+.hero-eyebrow::before{ content:''; width:26px; height:1px; background:var(--teal); display:inline-block; }
+.hero h1{ font-size:56px; line-height:1.05; max-width:820px; font-weight:600; }
+.hero h1 em{ font-style:normal; color:var(--copper); }
+.hero p{ margin-top:22px; max-width:560px; color:var(--text-dim); font-size:16px; line-height:1.6; }
+.hero-actions{ margin-top:34px; display:flex; gap:14px; }
+.hero-btn{ padding:13px 26px; border-radius:var(--radius); font-size:14px; font-weight:600; border:1px solid var(--stroke); }
+.hero-btn.primary{ background:var(--copper); color:var(--basalt); border:none; }
+.hero-btn.ghost{ color:var(--text); background:transparent; }
+.hero-strata{
+  position:absolute; right:-60px; top:0; bottom:0; width:520px; z-index:0; opacity:0.9;
+}
+
+.section-label{
+  font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--text-faint); padding:0 40px; margin:70px 0 18px;
+  display:flex; align-items:center; gap:10px;
+}
+.section-label span.num{ color:var(--copper); }
+
+.card-grid{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
+  background:var(--stroke); border:1px solid var(--stroke); margin:0 40px 70px;
+}
+.pcard{
+  background:var(--basalt-2); padding:30px 26px; transition:background .15s;
+  cursor:pointer;
+}
+.pcard:hover{ background:var(--panel-2); }
+.pcard .ic{ font-size:22px; margin-bottom:16px; display:block; }
+.pcard h3{ font-size:16px; font-weight:600; margin-bottom:8px; }
+.pcard p{ font-size:12.5px; color:var(--text-faint); line-height:1.5; }
+
+.pub-footer{
+  padding:30px 40px; border-top:1px solid var(--stroke);
+  display:flex; justify-content:space-between; color:var(--text-faint); font-size:11.5px;
+}
+
+/* ============ SECURE PORTAL SHELL ============ */
+#secure{ display:none; }
+#secure.active{ display:flex; }
+.shell{ display:flex; width:100%; min-height:100vh; }
+.sidebar{
+  width:236px; flex-shrink:0; background:var(--panel);
+  border-right:1px solid var(--stroke); display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh;
+}
+.sidebar-top{ padding:22px 20px; border-bottom:1px solid var(--stroke); }
+.side-nav{ flex:1; padding:14px 10px; overflow-y:auto; }
+.side-group-label{
+  font-family:'IBM Plex Mono'; font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--text-faint); padding:14px 12px 8px;
+}
+.side-item{
+  display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:var(--radius);
+  font-size:13.5px; color:var(--text-dim); margin-bottom:2px; position:relative;
+  border-left:2px solid transparent;
+}
+.side-item .dot{ width:6px; height:6px; border-radius:50%; background:var(--text-faint); flex-shrink:0; }
+.side-item:hover{ background:var(--panel-2); color:var(--text); }
+.side-item.active{ background:var(--panel-2); color:var(--text); border-left:2px solid var(--copper); }
+.side-item.active .dot{ background:var(--copper); }
+.sidebar-bottom{ padding:16px 20px; border-top:1px solid var(--stroke); }
+.user-chip{ display:flex; align-items:center; gap:10px; }
+.user-avatar{ width:30px; height:30px; border-radius:50%; background:var(--teal); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:var(--basalt); }
+.user-meta .name{ font-size:12.5px; font-weight:500; }
+.user-meta .role{ font-size:10.5px; color:var(--text-faint); }
+.logout{ margin-top:12px; font-size:11px; color:var(--text-faint); display:block; }
+.logout:hover{ color:var(--copper); }
+
+.main{ flex:1; min-width:0; }
+.topbar{
+  height:60px; border-bottom:1px solid var(--stroke); display:flex; align-items:center;
+  justify-content:space-between; padding:0 28px; background:var(--basalt-2);
+  position:sticky; top:0; z-index:10;
+}
+.crumb{ font-size:12px; color:var(--text-faint); }
+.crumb b{ color:var(--text); font-weight:500; }
+.topbar-right{ display:flex; align-items:center; gap:18px; }
+.search-mini{
+  display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--stroke);
+  border-radius:var(--radius); padding:7px 12px; font-size:12px; color:var(--text-faint); width:220px;
+}
+.pill-live{
+  font-family:'IBM Plex Mono'; font-size:10px; color:var(--malachite); display:flex; align-items:center; gap:6px;
+}
+.pill-live::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--malachite); box-shadow:0 0 0 3px rgba(95,158,121,0.2); }
+
+.view{ display:none; padding:30px 30px 70px; }
+.view.active{ display:block; }
+.view-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:24px; }
+.view-head h2{ font-size:22px; font-weight:600; }
+.view-head p{ color:var(--text-faint); font-size:12.5px; margin-top:4px; }
+
+/* generic panel */
+.panel{ background:var(--panel); border:1px solid var(--stroke); border-radius:var(--radius); }
+.panel-head{ padding:14px 18px; border-bottom:1px solid var(--stroke); display:flex; justify-content:space-between; align-items:center; }
+.panel-head h4{ font-size:12.5px; font-weight:600; letter-spacing:0.02em; text-transform:uppercase; color:var(--text-dim); }
+.panel-body{ padding:18px; }
+
+/* dashboard */
+.stat-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--stroke); border:1px solid var(--stroke); margin-bottom:24px; }
+.stat{ background:var(--panel); padding:20px; }
+.stat .label{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; }
+.stat .val{ font-family:'Space Grotesk'; font-size:28px; font-weight:600; }
+.stat .delta{ font-size:11px; margin-top:6px; font-family:'IBM Plex Mono'; }
+.delta.up{ color:var(--malachite); }
+.delta.warn{ color:var(--amber); }
+
+.dash-grid{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; }
+.strat-bar{ display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--stroke); font-size:12.5px; }
+.strat-bar:last-child{ border-bottom:none; }
+.strat-bar .swatch{ width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.strat-bar .name{ flex:1; color:var(--text-dim); }
+.strat-bar .amt{ font-family:'IBM Plex Mono'; color:var(--text); }
+.activity-item{ display:flex; gap:12px; padding:11px 0; border-bottom:1px solid var(--stroke); font-size:12px; }
+.activity-item:last-child{ border-bottom:none; }
+.activity-item .time{ color:var(--text-faint); font-family:'IBM Plex Mono'; font-size:10.5px; white-space:nowrap; padding-top:2px;}
+.activity-item .txt b{ color:var(--text); font-weight:500; }
+.activity-item .txt{ color:var(--text-dim); }
+
+/* buttons/chips/checkbox */
+.btn{ border:1px solid var(--stroke); background:var(--panel-2); color:var(--text); font-size:12px; padding:8px 14px; border-radius:var(--radius); }
+.btn:hover{ border-color:var(--copper); }
+.btn.primary{ background:var(--copper); border-color:var(--copper); color:var(--basalt); font-weight:600; }
+.btn.primary:hover{ background:#cf8b52; }
+.chip{ display:inline-flex; align-items:center; gap:6px; font-size:11px; padding:5px 10px; border-radius:20px; border:1px solid var(--stroke); color:var(--text-dim); }
+.check-row{ display:flex; align-items:center; gap:9px; padding:8px 0; font-size:12.5px; color:var(--text-dim); cursor:pointer; user-select:none; }
+.check-row input{ accent-color:var(--copper); width:14px; height:14px; }
+.check-row:hover{ color:var(--text); }
+
+/* Data catalogue */
+.catalogue-layout{ display:grid; grid-template-columns:230px 1fr 300px; gap:16px; }
+.search-box{ display:flex; gap:8px; margin-bottom:14px; }
+.search-box input{ flex:1; background:var(--basalt-2); border:1px solid var(--stroke); color:var(--text); padding:10px 12px; border-radius:var(--radius); font-size:12.5px; }
+.search-box input:focus{ outline:none; border-color:var(--teal); }
+.dataset-row{ display:flex; justify-content:space-between; align-items:center; padding:13px 16px; border-bottom:1px solid var(--stroke); cursor:pointer; }
+.dataset-row:hover{ background:var(--panel-2); }
+.dataset-row.selected{ background:var(--panel-2); border-left:2px solid var(--teal); }
+.dataset-row:last-child{ border-bottom:none; }
+.ds-name{ font-size:13px; font-weight:500; }
+.ds-meta{ font-size:10.5px; color:var(--text-faint); margin-top:3px; font-family:'IBM Plex Mono'; }
+.tag{ font-size:10px; padding:3px 8px; border-radius:20px; background:var(--basalt-2); color:var(--teal); border:1px solid var(--stroke); }
+.meta-row{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--stroke); font-size:12px; }
+.meta-row:last-child{ border-bottom:none; }
+.meta-row .k{ color:var(--text-faint); }
+.meta-row .v{ font-family:'IBM Plex Mono'; }
+
+/* GIS */
+.gis-layout{ display:grid; grid-template-columns:220px 1fr; gap:16px; }
+.map-stage{ position:relative; height:560px; overflow:hidden; background:radial-gradient(ellipse at 30% 20%, #17323a 0%, var(--basalt-2) 65%); }
+.map-svg{ position:absolute; inset:0; width:100%; height:100%; }
+.map-hud{ position:absolute; top:14px; left:14px; font-family:'IBM Plex Mono'; font-size:10px; color:var(--text-faint); background:rgba(12,26,32,0.7); padding:8px 10px; border:1px solid var(--stroke); border-radius:var(--radius); line-height:1.6; }
+.map-toolbar{ position:absolute; top:14px; right:14px; display:flex; flex-direction:column; gap:6px; }
+.map-toolbar button{ width:30px; height:30px; background:rgba(22,38,46,0.85); border:1px solid var(--stroke); color:var(--text-dim); border-radius:var(--radius); font-size:14px; }
+.map-toolbar button:hover{ color:var(--text); border-color:var(--copper); }
+.map-scale{ position:absolute; bottom:14px; left:14px; font-family:'IBM Plex Mono'; font-size:10px; color:var(--text-faint); display:flex; align-items:center; gap:8px; }
+.map-scale .bar{ width:60px; height:2px; background:var(--text-faint); }
+
+/* Real map (MapLibre) */
+#glMap{ position:absolute; inset:0; width:100%; height:100%; }
+.gl-loading{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; background:var(--basalt-2); z-index:5; transition:opacity .3s; }
+.gl-loading .spin{ width:26px; height:26px; border-radius:50%; border:2px solid var(--stroke); border-top-color:var(--copper); animation:glspin .8s linear infinite; }
+@keyframes glspin{ to{ transform:rotate(360deg); } }
+.gl-loading span{ font-family:'IBM Plex Mono'; font-size:10.5px; color:var(--text-faint); letter-spacing:0.06em; }
+
+.map-hud{ position:absolute; top:14px; left:14px; z-index:3; font-family:'IBM Plex Mono'; font-size:10px; color:var(--text-dim); background:rgba(12,26,32,0.82); padding:8px 10px; border:1px solid var(--stroke); border-radius:var(--radius); line-height:1.65; pointer-events:none; }
+.map-hud b{ color:var(--text-faint); font-weight:500; }
+
+.basemap-switcher{ position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:4; display:flex; background:rgba(22,38,46,0.9); border:1px solid var(--stroke); border-radius:var(--radius); padding:3px; gap:2px; backdrop-filter:blur(6px); }
+.basemap-btn{ padding:6px 12px; font-size:11px; font-family:'IBM Plex Sans'; color:var(--text-faint); background:transparent; border:none; border-radius:2px; letter-spacing:0.02em; }
+.basemap-btn:hover{ color:var(--text-dim); background:rgba(255,255,255,0.04); }
+.basemap-btn.active{ background:var(--copper); color:var(--basalt); font-weight:600; }
+
+.dim-toggle{ position:absolute; top:14px; right:14px; z-index:4; display:flex; background:rgba(22,38,46,0.9); border:1px solid var(--stroke); border-radius:var(--radius); padding:3px; gap:2px; }
+.dim-btn{ padding:6px 14px; font-size:11px; font-family:'IBM Plex Mono'; font-weight:600; color:var(--text-faint); background:transparent; border:none; border-radius:2px; }
+.dim-btn.active{ background:var(--teal); color:var(--basalt); }
+
+.map-toolbar2{ position:absolute; top:60px; right:14px; z-index:4; display:flex; flex-direction:column; gap:6px; }
+.map-toolbar2 button{ width:30px; height:30px; background:rgba(22,38,46,0.9); border:1px solid var(--stroke); color:var(--text-dim); border-radius:var(--radius); font-size:13px; }
+.map-toolbar2 button:hover{ color:var(--text); border-color:var(--copper); }
+
+.minimap-wrap{ position:absolute; bottom:14px; right:14px; z-index:4; width:150px; height:112px; border:1px solid var(--stroke); border-radius:var(--radius); overflow:hidden; box-shadow:0 6px 18px rgba(0,0,0,0.4); }
+.minimap-wrap .mm-label{ position:absolute; top:0; left:0; right:0; z-index:2; font-family:'IBM Plex Mono'; font-size:8.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); background:rgba(12,26,32,0.75); padding:3px 6px; }
+#glMiniMap{ position:absolute; inset:0; width:100%; height:100%; }
+
+/* opacity sliders in the layers panel */
+.layer-row{ display:flex; align-items:center; gap:8px; padding:7px 0; }
+.layer-row label{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim); flex:1; min-width:0; }
+.layer-row label span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.layer-row input[type="range"]{ width:56px; accent-color:var(--copper); height:3px; flex-shrink:0; }
+.basemap-opacity{ display:flex; align-items:center; gap:8px; padding:8px 0 2px; font-size:11px; color:var(--text-faint); }
+.basemap-opacity input[type="range"]{ flex:1; accent-color:var(--teal); height:3px; }
+
+/* MapLibre control theme overrides to match dark UI */
+.maplibregl-ctrl-top-right{ top:60px !important; }
+.maplibregl-ctrl-group{ background:rgba(22,38,46,0.9) !important; border:1px solid var(--stroke) !important; box-shadow:none !important; border-radius:var(--radius) !important; }
+.maplibregl-ctrl-group button{ background-color:transparent !important; }
+.maplibregl-ctrl-group button + button{ border-top:1px solid var(--stroke) !important; }
+.maplibregl-ctrl-icon{ filter:invert(78%) sepia(6%) saturate(300%) hue-rotate(140deg) brightness(95%); }
+.maplibregl-ctrl button:hover .maplibregl-ctrl-icon{ filter:invert(95%) sepia(6%) saturate(300%) hue-rotate(140deg) brightness(120%); }
+.maplibregl-ctrl-scale{ background:rgba(22,38,46,0.85) !important; border-color:var(--text-faint) !important; color:var(--text-dim) !important; font-family:'IBM Plex Mono' !important; font-size:10px !important; }
+.maplibregl-ctrl-attrib{ background:rgba(12,26,32,0.6) !important; font-size:9px !important; }
+.maplibregl-ctrl-attrib a{ color:var(--text-faint) !important; }
+.maplibregl-ctrl-attrib-button{ display:none !important; }
+.maplibregl-popup-content{ background:var(--panel-2) !important; color:var(--text) !important; font-family:'IBM Plex Sans' !important; font-size:12px !important; border:1px solid var(--stroke) !important; box-shadow:0 8px 20px rgba(0,0,0,0.4) !important; }
+.maplibregl-popup-tip{ border-top-color:var(--panel-2) !important; border-bottom-color:var(--panel-2) !important; }
+
+/* ============ 3D SUBSURFACE VIEWER ============ */
+.v3d-layout{ display:grid; grid-template-columns:1fr 320px; gap:16px; align-items:start; }
+.v3d-stage{ position:relative; height:640px; overflow:hidden; background:linear-gradient(180deg,#13262d 0%, #0c1a20 100%); }
+#v3dCanvas{ position:absolute; inset:0; width:100%; height:100%; }
+.v3d-labels{ position:absolute; inset:0; pointer-events:none; z-index:2; }
+.v3d-label{ position:absolute; transform:translate(-50%,-100%); font-family:'IBM Plex Mono'; font-size:9.5px; color:var(--text); background:rgba(12,26,32,0.78); border:1px solid var(--stroke); padding:2px 6px; border-radius:2px; white-space:nowrap; pointer-events:auto; cursor:pointer; }
+.v3d-label:hover{ border-color:var(--copper); }
+.v3d-label.pin{ background:var(--amber); color:var(--basalt); font-weight:600; border:none; transform:translate(-50%,-135%); }
+.v3d-crosshair{ position:absolute; top:50%; left:50%; width:14px; height:14px; margin:-7px 0 0 -7px; border:1px solid rgba(236,238,232,0.35); border-radius:50%; z-index:2; pointer-events:none; display:none; }
+.v3d-crosshair.on{ display:block; }
+.v3d-legend{ position:absolute; bottom:14px; left:14px; z-index:3; font-family:'IBM Plex Mono'; font-size:10px; color:var(--text-dim); background:rgba(12,26,32,0.8); border:1px solid var(--stroke); border-radius:var(--radius); padding:8px 10px; max-width:190px; }
+.v3d-legend .row{ display:flex; align-items:center; gap:6px; padding:2px 0; }
+.v3d-legend .sw{ width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.v3d-status{ position:absolute; bottom:14px; right:14px; z-index:3; font-family:'IBM Plex Mono'; font-size:10px; color:var(--text-faint); background:rgba(12,26,32,0.75); border:1px solid var(--stroke); border-radius:var(--radius); padding:6px 10px; max-width:260px; text-align:right; }
+
+.v3d-side .panel-body{ padding:0; }
+.v3d-tabs{ display:flex; flex-wrap:wrap; gap:2px; border-bottom:1px solid var(--stroke); padding:8px 8px 0; }
+.v3d-tab{ padding:7px 9px; font-size:10.5px; font-family:'IBM Plex Mono'; letter-spacing:0.02em; color:var(--text-faint); background:transparent; border:none; border-bottom:2px solid transparent; border-radius:2px 2px 0 0; }
+.v3d-tab:hover{ color:var(--text-dim); }
+.v3d-tab.active{ color:var(--text); border-bottom-color:var(--copper); }
+.v3d-tabpanel{ display:none; padding:14px 16px 18px; max-height:560px; overflow-y:auto; }
+.v3d-tabpanel.active{ display:block; }
+.v3d-subhead{ font-family:'IBM Plex Mono'; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); margin:16px 0 6px; }
+.v3d-subhead:first-child{ margin-top:0; }
+.v3d-note-small{ font-size:10.5px; color:var(--text-faint); line-height:1.5; margin:4px 0 10px; }
+.v3d-btnrow{ display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+.v3d-btnrow .btn{ flex:1; min-width:88px; font-size:11.5px; padding:8px 10px; }
+.v3d-readout{ font-family:'IBM Plex Mono'; font-size:11px; color:var(--text-dim); background:var(--basalt-2); border:1px solid var(--stroke); border-radius:var(--radius); padding:9px 10px; line-height:1.7; }
+.v3d-select{ width:100%; background:var(--basalt-2); border:1px solid var(--stroke); color:var(--text); padding:8px 10px; border-radius:var(--radius); font-size:12px; margin-bottom:8px; }
+.v3d-note-item{ padding:9px 10px; background:var(--basalt-2); border:1px solid var(--stroke); border-radius:var(--radius); margin-bottom:8px; font-size:11.5px; color:var(--text-dim); }
+.v3d-note-item .meta{ color:var(--text-faint); font-size:9.5px; margin-top:5px; display:flex; justify-content:space-between; align-items:center; }
+.v3d-note-item .meta button{ background:none; border:none; color:var(--text-faint); font-size:9.5px; text-decoration:underline; }
+.v3d-ai-item{ display:flex; gap:9px; padding:9px 0; border-bottom:1px solid var(--stroke); font-size:11.5px; color:var(--text-dim); }
+.v3d-ai-item:last-child{ border-bottom:none; }
+.v3d-ai-item .ic{ width:20px; flex-shrink:0; text-align:center; }
+.v3d-ai-item b{ color:var(--text); font-weight:600; }
+.v3d-snap-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--stroke); font-size:11.5px; }
+.v3d-snap-row:last-child{ border-bottom:none; }
+.v3d-snap-row .btn{ padding:5px 10px; font-size:10.5px; }
+.v3d-bh-row{ display:flex; align-items:center; gap:8px; padding:7px 0; font-size:12px; color:var(--text-dim); border-bottom:1px solid var(--stroke); }
+.v3d-bh-row:last-child{ border-bottom:none; }
+.v3d-bh-row .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.v3d-bh-row .id{ flex:1; }
+.v3d-bh-row .depth{ color:var(--text-faint); font-family:'IBM Plex Mono'; font-size:10.5px; }
+.v3d-bh-detail{ margin-top:10px; padding-top:10px; border-top:1px solid var(--stroke); display:none; }
+.v3d-bh-detail.active{ display:block; }
+
+/* AI/ML */
+.ai-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+
+/* ============ MPA MODULE ============ */
+.mpa-layout{ display:grid; grid-template-columns:220px 1fr 320px; gap:16px; align-items:start; }
+.mpa-catalog-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:14px; max-height:560px; overflow-y:auto; }
+.mpa-card{ background:var(--basalt-2); border:1px solid var(--stroke); border-radius:var(--radius); overflow:hidden; cursor:pointer; transition:border-color .15s; }
+.mpa-card:hover{ border-color:var(--teal); }
+.mpa-card.selected{ border-color:var(--copper); box-shadow:0 0 0 1px var(--copper); }
+.mpa-thumb{ height:96px; position:relative; background:#0f2026; }
+.mpa-thumb svg{ width:100%; height:100%; display:block; }
+.mpa-card-body{ padding:10px 12px 12px; }
+.mpa-card-body h5{ font-size:12px; font-weight:600; line-height:1.3; margin-bottom:3px; }
+.mpa-card-meta{ font-size:10px; color:var(--text-faint); margin-bottom:6px; }
+.chip-sm.malachite{ color:var(--malachite); border-color:#3a5c46; }
+.chip-sm.amber{ color:var(--amber); border-color:#6b542c; }
+.mpa-legend{ display:flex; align-items:center; gap:8px; margin-top:10px; }
+.mpa-legend .bar{ flex:1; height:8px; border-radius:20px; background:linear-gradient(90deg,#16323a,var(--teal) 35%,var(--amber) 68%,var(--copper) 100%); }
+.mpa-legend .lbl{ font-size:9.5px; font-family:'IBM Plex Mono'; color:var(--text-faint); }
+.mpa-source-note{ font-size:10.5px; color:var(--text-faint); line-height:1.6; margin-top:10px; padding-top:10px; border-top:1px solid var(--stroke); }
+.mpa-empty{ padding:30px 14px; text-align:center; color:var(--text-faint); font-size:12px; grid-column:1/-1; }
+.confidence-bar{ height:8px; background:var(--basalt-2); border-radius:20px; overflow:hidden; margin-top:8px; }
+.confidence-fill{ height:100%; background:linear-gradient(90deg, var(--teal), var(--malachite)); border-radius:20px; }
+.model-row{ display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--stroke); }
+.model-row:last-child{ border-bottom:none; }
+.status-dot{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-family:'IBM Plex Mono'; }
+.status-dot::before{ content:''; width:6px; height:6px; border-radius:50%; }
+.status-dot.running::before{ background:var(--malachite); box-shadow:0 0 0 3px rgba(95,158,121,0.2); }
+.status-dot.queued::before{ background:var(--amber); }
+.output-chip{ display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--basalt-2); border:1px solid var(--stroke); border-radius:var(--radius); margin-bottom:8px; font-size:12px; }
+.output-chip:last-child{ margin-bottom:0; }
+
+/* 3D viewer */
+.viewer3d-layout{ display:grid; grid-template-columns:1fr 240px; gap:16px; }
+.viewer-stage{ height:520px; position:relative; background:linear-gradient(180deg, #13262d, #0c1a20); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.slider-row{ margin-bottom:20px; }
+.slider-row label{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:10px; }
+.slider-row input[type=range]{ width:100%; accent-color:var(--copper); }
+.slider-val{ font-family:'IBM Plex Mono'; font-size:11px; color:var(--teal); margin-top:6px; }
+
+/* knowledge hub */
+.kh-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.kh-card{ background:var(--panel); border:1px solid var(--stroke); border-radius:var(--radius); padding:18px; }
+.kh-type{ font-size:10px; color:var(--copper); font-family:'IBM Plex Mono'; text-transform:uppercase; letter-spacing:0.08em; }
+.kh-card h4{ font-size:14px; margin:8px 0 6px; font-weight:600; }
+.kh-card p{ font-size:12px; color:var(--text-faint); line-height:1.5; }
+
+/* Data Management Process */
+.dmp-intro{ font-size:12.5px; color:var(--text-dim); line-height:1.65; margin-bottom:22px; max-width:840px; }
+.dmp-steps{ display:flex; flex-direction:column; gap:1px; background:var(--stroke); border:1px solid var(--stroke); margin-bottom:28px; }
+.dmp-step{ background:var(--panel); padding:20px 24px; display:grid; grid-template-columns:52px 1fr; gap:18px; }
+.dmp-num{ font-family:'Space Grotesk'; font-size:24px; font-weight:700; color:var(--copper); line-height:1; }
+.dmp-step h4{ font-size:14.5px; font-weight:600; margin-bottom:2px; }
+.dmp-step .sub{ font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.07em; margin:12px 0 7px; }
+.dmp-step .sub:first-of-type{ margin-top:10px; }
+.chip-list{ display:flex; flex-wrap:wrap; gap:6px; }
+.chip-sm{ font-size:10.5px; padding:4px 10px; border-radius:20px; background:var(--basalt-2); color:var(--text-dim); border:1px solid var(--stroke); white-space:nowrap; }
+.chip-sm.copper{ color:var(--copper); border-color:var(--copper-soft); }
+.chip-sm.teal{ color:var(--teal); border-color:#2f4d4c; }
+.dmp-note{ margin-top:13px; font-size:11px; color:var(--text-faint); font-style:italic; }
+.dmp-note b{ color:var(--text-dim); font-style:normal; }
+
+/* flow diagrams */
+.flow-wrap{ display:flex; flex-direction:column; align-items:center; padding:8px 0 2px; }
+.flow-node{ background:var(--basalt-2); border:1px solid var(--stroke); border-radius:var(--radius); padding:11px 20px; font-size:12.5px; text-align:center; min-width:250px; color:var(--text); }
+.flow-node.accent{ border-color:var(--copper); color:var(--copper); font-weight:600; }
+.flow-node.end{ border-color:var(--teal); color:var(--teal); font-weight:600; }
+.flow-arrow{ color:var(--teal); font-size:13px; line-height:1.3; padding:2px 0; font-family:'IBM Plex Mono'; }
+
+/* stage table */
+.stage-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+.stage-table th{ text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-faint); padding:11px 18px; border-bottom:1px solid var(--stroke); }
+.stage-table td{ padding:14px 18px; border-bottom:1px solid var(--stroke); color:var(--text-dim); vertical-align:top; }
+.stage-table tr:last-child td{ border-bottom:none; }
+.stage-table td.stage-name{ color:var(--copper); font-weight:600; font-family:'IBM Plex Mono'; font-size:12px; white-space:nowrap; }
+.stage-table td.stage-scale{ font-family:'IBM Plex Mono'; color:var(--teal); white-space:nowrap; }
+
+.dmp-cols{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+@media (max-width:1100px){ .dmp-cols{ grid-template-columns:1fr; } }
+
+/* Data Discovery tabs */
+
+/* login modal */
+.overlay{ position:fixed; inset:0; background:rgba(6,13,17,0.7); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:100; }
+.overlay.active{ display:flex; }
+.login-card{ width:380px; background:var(--panel); border:1px solid var(--stroke); border-radius:4px; padding:34px; }
+.login-card h3{ font-size:18px; margin-bottom:4px; }
+.login-card p{ font-size:12px; color:var(--text-faint); margin-bottom:24px; }
+.field{ margin-bottom:16px; }
+.field label{ font-size:11px; color:var(--text-dim); display:block; margin-bottom:7px; }
+.field input, .field select{ width:100%; background:var(--basalt-2); border:1px solid var(--stroke); color:var(--text); padding:10px 12px; border-radius:var(--radius); font-size:13px; }
+.mfa-note{ display:flex; gap:8px; align-items:flex-start; font-size:11px; color:var(--text-faint); margin:16px 0 20px; padding:10px 12px; background:var(--basalt-2); border-radius:var(--radius); border:1px solid var(--stroke); }
+.close-x{ position:absolute; top:16px; right:20px; color:var(--text-faint); font-size:20px; background:none; border:none; }
+
+@media (max-width:900px){
+  .card-grid{ grid-template-columns:1fr; }
+  .catalogue-layout, .gis-layout, .viewer3d-layout, .ai-grid, .dash-grid, .mpa-layout{ grid-template-columns:1fr; }
+  .mpa-catalog-grid{ grid-template-columns:1fr; }
+  .sidebar{ display:none; }
+  .hero h1{ font-size:36px; }
+}
+
+/* ============ WORKFLOW VIEW (matches main prototype theme) ============ */
+#view-workflow{
+  --wf-primary:var(--copper);
+  --wf-navy:var(--text);
+  --wf-green:var(--malachite);
+  --wf-orange:var(--amber);
+  --wf-red:#b3564a;
+  --wf-purple:#8577a1;
+  --wf-blue:#3f7d78;
+  --wf-teal:var(--teal);
+  --wf-bg:var(--basalt);
+  --wf-card:var(--panel);
+  --wf-border:var(--stroke);
+  --wf-text:var(--text);
+  --wf-text-dim:var(--text-dim);
+  --wf-text-faint:var(--text-faint);
+  margin:-30px -30px -70px;
+  padding:24px 28px 60px;
+  background:var(--wf-bg);
+  font-family:'IBM Plex Sans', sans-serif;
+  color:var(--wf-text);
+  min-height:100vh;
+}
+#view-workflow .view-head h2{ color:var(--wf-navy); font-family:'Space Grotesk', sans-serif; }
+#view-workflow .view-head p{ color:var(--wf-text-dim); }
+#view-workflow .wf-actions{ display:flex; gap:10px; }
+#view-workflow .wf-btn{ font-size:13px; font-weight:600; padding:10px 18px; border-radius:var(--radius); border:1px solid var(--wf-border); background:var(--wf-card); color:var(--wf-navy); display:inline-flex; align-items:center; gap:8px; }
+#view-workflow .wf-btn:hover{ border-color:var(--wf-primary); color:var(--wf-primary); }
+#view-workflow .wf-btn.primary{ background:var(--wf-primary); border-color:var(--wf-primary); color:var(--basalt); }
+#view-workflow .wf-btn.primary:hover{ background:#cf8b52; }
+
+#view-workflow .wf-stage-strip{ display:flex; align-items:stretch; gap:0; margin:22px 0 24px; overflow-x:auto; padding-bottom:4px; }
+#view-workflow .wf-stage-card{ background:var(--wf-card); border:1px solid var(--wf-border); border-radius:var(--radius); padding:16px 18px; min-width:150px; flex:1; cursor:pointer; transition:border-color .15s, transform .15s; }
+#view-workflow .wf-stage-card:hover{ border-color:var(--teal); transform:translateY(-2px); }
+#view-workflow .wf-stage-arrow{ display:flex; align-items:center; justify-content:center; width:28px; color:var(--wf-text-faint); font-size:14px; flex-shrink:0; }
+#view-workflow .wf-stage-icon{ width:38px; height:38px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--basalt); margin-bottom:12px; }
+#view-workflow .wf-stage-num{ font-size:10px; color:var(--wf-text-faint); font-weight:600; margin-bottom:2px; }
+#view-workflow .wf-stage-name{ font-size:13px; font-weight:600; color:var(--wf-navy); line-height:1.3; margin-bottom:10px; }
+#view-workflow .wf-stage-count{ font-size:22px; font-weight:700; font-family:'Space Grotesk', sans-serif; color:var(--wf-navy); line-height:1; }
+#view-workflow .wf-stage-status{ font-size:11px; font-weight:600; margin-top:6px; }
+
+#view-workflow .wf-grid{ display:grid; grid-template-columns:1fr 320px; gap:18px; align-items:start; }
+#view-workflow .wf-panel{ background:var(--wf-card); border:1px solid var(--wf-border); border-radius:var(--radius); }
+#view-workflow .wf-panel-head{ padding:16px 20px; border-bottom:1px solid var(--wf-border); font-size:12.5px; font-weight:600; letter-spacing:0.02em; text-transform:uppercase; color:var(--wf-text-dim); display:flex; justify-content:space-between; align-items:center; }
+#view-workflow .wf-panel-head a{ font-size:12px; font-weight:600; color:var(--wf-primary); text-transform:none; }
+#view-workflow .wf-stagelist{ padding:6px 0; }
+#view-workflow .wf-stage-row{ display:flex; gap:14px; padding:16px 20px; border-bottom:1px solid var(--wf-border); position:relative; }
+#view-workflow .wf-stage-row:last-child{ border-bottom:none; }
+#view-workflow .wf-stage-rail{ display:flex; flex-direction:column; align-items:center; width:26px; flex-shrink:0; }
+#view-workflow .wf-stage-badge{ width:26px; height:26px; border-radius:50%; color:var(--basalt); font-size:11.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+#view-workflow .wf-stage-rail-line{ width:2px; flex:1; background:var(--wf-border); margin-top:4px; }
+#view-workflow .wf-stage-icon-sm{ width:38px; height:38px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:15px; color:var(--basalt); flex-shrink:0; }
+#view-workflow .wf-stage-info{ flex-shrink:0; width:200px; }
+#view-workflow .wf-stage-info h5{ font-size:13.5px; font-weight:700; color:var(--wf-navy); margin-bottom:3px; }
+#view-workflow .wf-stage-info p{ font-size:11.5px; color:var(--wf-text-dim); line-height:1.45; }
+#view-workflow .wf-stage-badgepill{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:20px; white-space:nowrap; height:fit-content; margin-top:2px; }
+#view-workflow .wf-stage-metrics{ flex:1; display:grid; grid-template-columns:repeat(3,minmax(70px,1fr)) 90px; gap:14px; align-items:start; }
+#view-workflow .wf-metric .k{ font-size:10px; color:var(--wf-text-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px; }
+#view-workflow .wf-metric .v{ font-size:13px; font-weight:700; color:var(--wf-navy); }
+#view-workflow .wf-metric .bar{ height:5px; border-radius:4px; background:var(--wf-border); margin-top:6px; overflow:hidden; }
+#view-workflow .wf-metric .bar span{ display:block; height:100%; border-radius:4px; }
+#view-workflow .wf-stage-actions{ flex-shrink:0; display:flex; align-items:center; gap:6px; }
+#view-workflow .wf-view-btn{ font-size:11.5px; font-weight:600; padding:7px 12px; border-radius:var(--radius); border:1px solid var(--wf-border); background:var(--panel-2); color:var(--wf-primary); white-space:nowrap; }
+#view-workflow .wf-view-btn:hover{ background:var(--stroke); border-color:var(--wf-primary); }
+#view-workflow .wf-caret{ width:28px; height:28px; border-radius:var(--radius); border:1px solid var(--wf-border); background:var(--panel-2); color:var(--wf-text-dim); font-size:11px; }
+
+#view-workflow .wf-side{ display:flex; flex-direction:column; gap:18px; }
+#view-workflow .wf-donut-wrap{ padding:18px 20px 20px; display:flex; flex-direction:column; align-items:center; }
+#view-workflow .wf-legend{ width:100%; margin-top:14px; }
+#view-workflow .wf-legend-row{ display:flex; align-items:center; font-size:12px; padding:5px 0; }
+#view-workflow .wf-legend-dot{ width:9px; height:9px; border-radius:3px; margin-right:8px; flex-shrink:0; }
+#view-workflow .wf-legend-label{ flex:1; color:var(--wf-text-dim); }
+#view-workflow .wf-legend-val{ font-weight:700; color:var(--wf-navy); }
+#view-workflow .wf-alert-item{ display:flex; gap:10px; padding:13px 20px; border-bottom:1px solid var(--wf-border); }
+#view-workflow .wf-alert-item:last-child{ border-bottom:none; }
+#view-workflow .wf-alert-icon{ width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--basalt); flex-shrink:0; margin-top:1px; }
+#view-workflow .wf-alert-text{ font-size:12px; color:var(--wf-navy); line-height:1.4; }
+#view-workflow .wf-alert-time{ font-size:10.5px; color:var(--wf-text-faint); margin-top:3px; }
+#view-workflow .wf-quick-actions{ padding:16px 20px 20px; display:flex; flex-direction:column; gap:10px; }
+#view-workflow .wf-qa-btn{ width:100%; text-align:left; font-size:13px; font-weight:600; padding:11px 14px; border-radius:var(--radius); border:1px solid var(--wf-border); background:var(--panel-2); color:var(--wf-navy); display:flex; align-items:center; gap:9px; }
+#view-workflow .wf-qa-btn.primary{ background:var(--wf-primary); border-color:var(--wf-primary); color:var(--basalt); }
+#view-workflow .wf-qa-btn.primary:hover{ background:#cf8b52; }
+#view-workflow .wf-qa-btn:not(.primary):hover{ border-color:var(--wf-primary); color:var(--wf-primary); }
+
+/* --- interactivity additions --- */
+#view-workflow .wf-stage-card{ position:relative; }
+#view-workflow .wf-stage-card.selected{ border-color:var(--wf-primary); box-shadow:0 0 0 1px var(--wf-primary); }
+#view-workflow .wf-stage-card.selected::after{ content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--wf-primary); }
+#view-workflow .wf-filter-bar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:14px 20px; border-bottom:1px solid var(--wf-border); }
+#view-workflow .wf-search{ flex:1; min-width:160px; background:var(--wf-bg); border:1px solid var(--wf-border); color:var(--wf-text); padding:8px 12px; border-radius:var(--radius); font-size:12.5px; }
+#view-workflow .wf-search::placeholder{ color:var(--wf-text-faint); }
+#view-workflow .wf-search:focus{ outline:none; border-color:var(--wf-primary); }
+#view-workflow .wf-chips{ display:flex; gap:6px; flex-wrap:wrap; }
+#view-workflow .wf-chip{ font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:20px; border:1px solid var(--wf-border); background:var(--panel-2); color:var(--wf-text-dim); }
+#view-workflow .wf-chip:hover{ color:var(--wf-text); }
+#view-workflow .wf-chip.active{ background:var(--wf-primary); border-color:var(--wf-primary); color:var(--basalt); }
+#view-workflow .wf-empty{ padding:30px 20px; text-align:center; color:var(--wf-text-faint); font-size:12.5px; }
+#view-workflow .wf-stage-row{ cursor:default; transition:background .15s; }
+#view-workflow .wf-stage-row.highlight{ background:rgba(193,121,63,0.08); }
+#view-workflow .wf-caret{ transition:transform .2s; }
+#view-workflow .wf-stage-row.expanded .wf-caret{ transform:rotate(180deg); }
+#view-workflow .wf-expand-panel{ grid-column:1 / -1; width:100%; margin-top:14px; padding-top:14px; border-top:1px dashed var(--wf-border); display:none; }
+#view-workflow .wf-stage-row.expanded .wf-expand-panel{ display:block; }
+#view-workflow .wf-stage-row{ flex-wrap:wrap; }
+#view-workflow .wf-substep{ display:flex; align-items:center; gap:9px; padding:6px 0; font-size:12px; color:var(--wf-text-dim); }
+#view-workflow .wf-substep-check{ width:16px; height:16px; border-radius:50%; border:1.5px solid var(--wf-border); display:flex; align-items:center; justify-content:center; font-size:9px; flex-shrink:0; cursor:pointer; color:transparent; }
+#view-workflow .wf-substep-check.done{ background:var(--wf-green); border-color:var(--wf-green); color:var(--basalt); }
+#view-workflow .wf-substep.done span.lbl{ color:var(--wf-text-faint); text-decoration:line-through; }
+#view-workflow .wf-progress-live span{ transition:width .5s ease; }
+#view-workflow .wf-legend-row{ cursor:pointer; border-radius:var(--radius); padding:5px 6px; }
+#view-workflow .wf-legend-row:hover{ background:var(--panel-2); }
+#view-workflow .wf-legend-row.active .wf-legend-label{ color:var(--wf-text); font-weight:600; }
+#view-workflow .wf-alert-item{ cursor:pointer; }
+#view-workflow .wf-alert-item:hover{ background:var(--panel-2); }
+
+/* modal */
+.wf-modal-overlay{ position:fixed; inset:0; background:rgba(6,13,17,0.7); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:200; }
+.wf-modal-overlay.active{ display:flex; }
+.wf-modal{ width:520px; max-width:92vw; max-height:84vh; overflow-y:auto; background:var(--panel); border:1px solid var(--stroke); border-radius:4px; position:relative; }
+.wf-modal-head{ display:flex; align-items:center; gap:12px; padding:22px 26px; border-bottom:1px solid var(--stroke); }
+.wf-modal-icon{ width:38px; height:38px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--basalt); flex-shrink:0; }
+.wf-modal-head h3{ font-size:16px; margin-bottom:2px; }
+.wf-modal-head p{ font-size:11.5px; color:var(--text-faint); }
+.wf-modal-body{ padding:22px 26px; }
+.wf-modal-metrics{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+.wf-modal-metric{ background:var(--basalt-2); border:1px solid var(--stroke); border-radius:var(--radius); padding:12px 14px; }
+.wf-modal-metric .k{ font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+.wf-modal-metric .v{ font-size:15px; font-weight:700; }
+.wf-modal-section-label{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-faint); margin:18px 0 8px; }
+.wf-modal-actions{ display:flex; gap:10px; margin-top:22px; }
+.wf-modal-actions button{ flex:1; font-size:13px; font-weight:600; padding:11px 14px; border-radius:var(--radius); border:1px solid var(--stroke); background:var(--panel-2); color:var(--text); }
+.wf-modal-actions button.primary{ background:var(--copper); border-color:var(--copper); color:var(--basalt); }
+.wf-modal-actions button:hover{ border-color:var(--copper); }
+
+@media (max-width:1150px){
+  #view-workflow .wf-grid{ grid-template-columns:1fr; }
+  #view-workflow .wf-stage-metrics{ grid-template-columns:repeat(2,1fr); }
+}
+@media (max-width:700px){
+  #view-workflow .wf-stage-row{ flex-wrap:wrap; }
+  #view-workflow .wf-stage-info{ width:100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ PUBLIC PORTAL ============ -->
+<div class="screen active" id="public">
+  <div class="contour-bg"></div>
+  <header class="pub-header">
+    <div class="brand">
+      <div class="brand-mark">D</div>
+      <div>
+        <div class="brand-name">DPIIC</div>
+        <div class="brand-sub">Mineral Intelligence Platform</div>
+      </div>
+    </div>
+    <nav class="pub-nav">
+      <a href="#">About DPIIC</a>
+      <a href="#">Mineral Intelligence</a>
+      <a href="#">Data Catalogue</a>
+      <a href="#">Knowledge Hub</a>
+      <a href="#">Reports</a>
+      <button class="btn-login" onclick="openLogin()">Login</button>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <svg class="hero-strata" viewBox="0 0 520 640" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,80 C120,40 300,140 520,70 L520,0 L0,0 Z" fill="#1c2f38"/>
+      <path d="M0,200 C150,150 320,260 520,190 L520,90 C320,150 150,60 0,100 Z" fill="#16262e"/>
+      <path d="M0,340 C160,280 330,400 520,320 L520,200 C320,270 150,160 0,210 Z" fill="#1c2f38" opacity="0.85"/>
+      <path d="M0,480 C170,420 330,530 520,450 L520,330 C330,410 160,290 0,350 Z" fill="#122530"/>
+      <g opacity="0.5">
+        <circle cx="120" cy="150" r="3" fill="#c1793f"/>
+        <circle cx="310" cy="230" r="4" fill="#4fa8a3"/>
+        <circle cx="410" cy="380" r="3" fill="#c1793f"/>
+        <circle cx="80" cy="420" r="3" fill="#5f9e79"/>
+        <circle cx="220" cy="500" r="4" fill="#c1793f"/>
+      </g>
+    </svg>
+    <div class="hero-eyebrow">National Geo-Mineral Data Repository</div>
+    <h1>Every borehole, layer<br>and <em>prospectivity model</em><br>in one intelligence system.</h1>
+    <p>DPIIC unifies GSI geological survey data, remote sensing, and AI-driven mineral prospectivity analysis into a single interoperable platform for scientists, agencies and research institutes.</p>
+    <div class="hero-actions">
+      <button class="hero-btn primary" onclick="openLogin()">Enter Secure Portal</button>
+      <button class="hero-btn ghost" onclick="goCatalogue()">Browse Data Catalogue</button>
+    </div>
+  </section>
+
+  <div class="section-label"><span class="num">01</span> Public Intelligence Modules</div>
+  <div class="card-grid">
+    <div class="pcard" onclick="openLogin()"><span class="ic">🗺</span><h3>Mineral Intelligence Dashboard</h3><p>National-scale overview of exploration activity, mineral occurrences and survey coverage.</p></div>
+    <div class="pcard" onclick="openLogin()"><span class="ic">🌐</span><h3>Geological Knowledge Repository</h3><p>Structured access to geological, geophysical and geochemical map layers.</p></div>
+    <div class="pcard" onclick="goCatalogue()"><span class="ic">📊</span><h3>Data Catalogue</h3><p>Search NGCM, NGPM, NAGMP, SGM and remote sensing datasets by area of interest.</p></div>
+    <div class="pcard" onclick="openLogin()"><span class="ic">🛰</span><h3>Remote Sensing Explorer</h3><p>Satellite-derived geochemical anomaly and land-cover layers for exploration targeting.</p></div>
+    <div class="pcard" onclick="goKH()"><span class="ic">📚</span><h3>Research &amp; Training Hub</h3><p>SOPs, technical reports and AI-assisted literature discovery for field teams.</p></div>
+    <div class="pcard" onclick="openLogin()"><span class="ic">📰</span><h3>News &amp; Updates</h3><p>Programme announcements, dataset releases and platform advisories.</p></div>
+  </div>
+
+  <footer class="pub-footer">
+    <span>© Directorate of Geological Programme, Intelligence &amp; Innovation Council — Prototype build</span>
+    <span class="mono">NGC MeghRaj 2.0 · v0.9-prototype</span>
+  </footer>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="overlay" id="loginOverlay">
+  <div class="login-card" style="position:relative;">
+    <button class="close-x" onclick="closeLogin()">×</button>
+    <h3>Secure User Portal</h3>
+    <p>Role-based access for GSI scientists, government departments and research partners.</p>
+    <div class="field">
+      <label>User category</label>
+      <select id="roleSelect">
+        <option>GSI Scientist</option>
+        <option>Government Department</option>
+        <option>PSU</option>
+        <option>Research Institute</option>
+        <option>Exploration Agency</option>
+        <option>Private Stakeholder</option>
+      </select>
+    </div>
+    <div class="field"><label>User ID / SSO handle</label><input type="text" placeholder="e.g. gsi.scientist@dpiic.gov.in"></div>
+    <div class="field"><label>Password</label><input type="password" placeholder="••••••••••"></div>
+    <div class="mfa-note">🔒 Multi-factor authentication will be requested after credential verification, per RBAC policy.</div>
+    <button class="btn primary" style="width:100%; padding:11px;" onclick="enterSecure()">Sign in</button>
+  </div>
+</div>
+
+<!-- WORKFLOW STAGE DETAIL MODAL -->
+<div class="wf-modal-overlay" id="wfModalOverlay" onclick="if(event.target===this) wfCloseModal()">
+  <div class="wf-modal">
+    <button class="close-x" style="top:18px;" onclick="wfCloseModal()">×</button>
+    <div class="wf-modal-head">
+      <div class="wf-modal-icon" id="wfModalIcon"></div>
+      <div>
+        <h3 id="wfModalTitle"></h3>
+        <p id="wfModalDesc"></p>
+      </div>
+    </div>
+    <div class="wf-modal-body">
+      <div class="wf-modal-metrics" id="wfModalMetrics"></div>
+      <div class="wf-modal-section-label">Sub-tasks</div>
+      <div id="wfModalSubsteps"></div>
+      <div class="wf-modal-section-label" id="wfModalLastLabel"></div>
+      <div class="wf-modal-actions">
+        <button onclick="wfToast('Retry queued for failed items…')">↻ Retry Failed</button>
+        <button class="primary" onclick="wfToast('Stage approved and forwarded to next step.')">✓ Approve &amp; Continue</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SECURE PORTAL ============ -->
+<div class="screen" id="secure">
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="brand"><div class="brand-mark" style="width:28px;height:28px;font-size:11px;">D</div><div><div class="brand-name" style="font-size:13px;">DPIIC</div><div class="brand-sub" style="font-size:9px;">Secure Portal</div></div></div>
+      </div>
+      <nav class="side-nav">
+        <div class="side-group-label">Overview</div>
+        <div class="side-item active" data-view="dashboard" onclick="showView('dashboard', this)"><span class="dot"></span>Dashboard</div>
+        <div class="side-item" data-view="workflow" onclick="showView('workflow', this)"><span class="dot"></span>Workflow</div>
+        <div class="side-group-label">Data</div>
+        <div class="side-item" data-view="catalogue" onclick="showView('catalogue', this)"><span class="dot"></span>Data Discovery</div>
+        <div class="side-item" data-view="gis" onclick="showView('gis', this)"><span class="dot"></span>Interactive GIS Map Viewer</div>
+        <div class="side-group-label">Intelligence</div>
+        <div class="side-item" data-view="ai" onclick="showView('ai', this)"><span class="dot"></span>Geoscientific Model</div>
+        <div class="side-item" data-view="viewer3d" onclick="showView('viewer3d', this)"><span class="dot"></span>3D Subsurface Viewer</div>
+        <div class="side-group-label">Work</div>
+        <div class="side-item" data-view="workspace" onclick="showView('workspace', this)"><span class="dot"></span>Project Workspace</div>
+        <div class="side-item" data-view="kh" onclick="showView('kh', this)"><span class="dot"></span>Knowledge Management</div>
+        <div class="side-item" data-view="reports" onclick="showView('reports', this)"><span class="dot"></span>Reports</div>
+        <div class="side-group-label">System</div>
+        <div class="side-item" data-view="admin" onclick="showView('admin', this)"><span class="dot"></span>Administration</div>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="user-chip">
+          <div class="user-avatar" id="userAvatar">GS</div>
+          <div class="user-meta"><div class="name" id="userName">GSI Scientist</div><div class="role">RBAC · Tier 2 access</div></div>
+        </div>
+        <a class="logout" href="#" onclick="exitSecure(event)">← Exit to public portal</a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb">DPIIC / <b id="crumbView">Dashboard</b></div>
+        <div class="topbar-right">
+          <div class="search-mini">🔍 Search datasets, reports…</div>
+          <div class="pill-live">LIVE · NGC MeghRaj</div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <section class="view active" id="view-dashboard">
+        <div class="view-head"><div><h2>Welcome back</h2><p>Platform status and recent project activity across DPIIC modules.</p></div><button class="btn primary">+ New project</button></div>
+        <div class="stat-row">
+          <div class="stat"><div class="label">Datasets indexed</div><div class="val">48,210</div><div class="delta up">▲ 312 this week</div></div>
+          <div class="stat"><div class="label">Active projects</div><div class="val">36</div><div class="delta up">▲ 4 new</div></div>
+          <div class="stat"><div class="label">ML models running</div><div class="val">7</div><div class="delta warn">2 queued</div></div>
+          <div class="stat"><div class="label">Pending data requests</div><div class="val">19</div><div class="delta warn">5 awaiting approval</div></div>
+        </div>
+        <div class="dash-grid">
+          <div class="panel">
+            <div class="panel-head"><h4>Dataset coverage by programme</h4><span class="chip">FY 2025–26</span></div>
+            <div class="panel-body">
+              <div class="strat-bar"><span class="swatch" style="background:#c1793f"></span><span class="name">NGCM — National Geochemical Mapping</span><span class="amt">14,880</span></div>
+              <div class="strat-bar"><span class="swatch" style="background:#4fa8a3"></span><span class="name">NGPM — National Geophysical Mapping</span><span class="amt">11,240</span></div>
+              <div class="strat-bar"><span class="swatch" style="background:#5f9e79"></span><span class="name">NAGMP — Aerogeophysical Mapping</span><span class="amt">9,015</span></div>
+              <div class="strat-bar"><span class="swatch" style="background:#e0a458"></span><span class="name">SGM — Systematic Geological Mapping</span><span class="amt">7,530</span></div>
+              <div class="strat-bar"><span class="swatch" style="background:#7a8f95"></span><span class="name">Remote Sensing</span><span class="amt">5,545</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h4>Recent activity</h4></div>
+            <div class="panel-body">
+              <div class="activity-item"><span class="time">09:14</span><span class="txt"><b>MPA-Prospectivity-07</b> completed prediction run over Bastar Craton AOI.</span></div>
+              <div class="activity-item"><span class="time">08:52</span><span class="txt"><b>R. Iyer (GSI)</b> requested access to NAGMP Odisha block-14.</span></div>
+              <div class="activity-item"><span class="time">Yesterday</span><span class="txt"><b>3D model</b> for Singhbhum borehole cluster published to workspace.</span></div>
+              <div class="activity-item"><span class="time">Yesterday</span><span class="txt">New SOP uploaded: <b>Coordinate transformation for legacy SHP layers</b>.</span></div>
+              <div class="activity-item"><span class="time">2 days ago</span><span class="txt"><b>ETL pipeline</b> ingested 1,204 GeoTIFF tiles via SFTP gateway.</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WORKFLOW (light enterprise theme) -->
+      <section class="view" id="view-workflow">
+        <div class="view-head">
+          <div><h2>Data Management Workflow</h2><p>End-to-end data lifecycle from acquisition to processing</p></div>
+          <div class="wf-actions">
+            <button class="wf-btn">⬇ Download Report</button>
+            <button class="wf-btn primary">📊 View Analytics</button>
+          </div>
+        </div>
+
+        <div class="wf-stage-strip" id="wfStageStrip"></div>
+
+        <div class="wf-grid">
+          <div class="wf-panel">
+            <div class="wf-panel-head"><span>Workflow Stages</span><span id="wfResultCount" style="text-transform:none; font-weight:500; color:var(--wf-text-faint);"></span></div>
+            <div class="wf-filter-bar">
+              <input type="text" class="wf-search" id="wfSearchInput" placeholder="Search stages…" oninput="wfSetSearch(this.value)">
+              <div class="wf-chips" id="wfChips"></div>
+            </div>
+            <div class="wf-stagelist" id="wfStageList"></div>
+          </div>
+
+          <div class="wf-side">
+            <div class="wf-panel">
+              <div class="wf-panel-head"><span>Workflow Overview</span></div>
+              <div class="wf-donut-wrap">
+                <svg width="180" height="180" viewBox="0 0 180 180" id="wfDonut"></svg>
+                <div class="wf-legend" id="wfLegend"></div>
+              </div>
+            </div>
+
+            <div class="wf-panel">
+              <div class="wf-panel-head"><span>Recent Alerts</span><a href="#">View All</a></div>
+              <div id="wfAlerts"></div>
+            </div>
+
+            <div class="wf-panel">
+              <div class="wf-panel-head"><span>Quick Actions</span></div>
+              <div class="wf-quick-actions">
+                <button class="wf-qa-btn primary" onclick="wfToast('Opening data ingestion form…')">＋ Ingest New Data</button>
+                <button class="wf-qa-btn" onclick="wfToast('Opening upload dialog…')">⬆ Upload Dataset</button>
+                <button class="wf-qa-btn" onclick="wfToast('Opening source manager…')">⚙ Manage Sources</button>
+                <button class="wf-qa-btn" id="wfSimulateBtn" onclick="wfSimulateRun()">▶ Simulate Pipeline Run</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DATA CATALOGUE / DATA MANAGEMENT PROCESS -->
+      <section class="view" id="view-catalogue">
+        <div class="view-head"><div><h2>Data Discovery &amp; Catalogue</h2><p>Search, filter and preview geospatial datasets across all DPIIC programmes.</p></div></div>
+
+        <div class="catalogue-layout">
+          <div class="panel">
+            <div class="panel-head"><h4>Filters</h4></div>
+            <div class="panel-body">
+              <label class="check-row"><input type="checkbox" checked> NGCM</label>
+              <label class="check-row"><input type="checkbox" checked> NGPM</label>
+              <label class="check-row"><input type="checkbox"> NAGMP</label>
+              <label class="check-row"><input type="checkbox"> SGM</label>
+              <label class="check-row"><input type="checkbox"> Remote Sensing</label>
+              <label class="check-row"><input type="checkbox"> Mineral Exploration Data</label>
+              <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--stroke);">
+                <div class="check-row" style="cursor:default; color:var(--text-faint); font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em;">Area of interest</div>
+                <button class="btn" style="width:100%; margin-top:6px;">⛶ Draw AOI on map</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h4>Results — 4 of 48,210</h4></div>
+            <div class="panel-body" style="padding:0;">
+              <div class="dataset-row selected" onclick="selectDataset(this,0)"><div><div class="ds-name">Bastar Craton — Geochemical Grid v3</div><div class="ds-meta">NGCM · 1:50,000 · Updated 12 Jun 2026</div></div><span class="tag">Vector</span></div>
+              <div class="dataset-row" onclick="selectDataset(this,1)"><div><div class="ds-name">Singhbhum Aeromagnetic Survey</div><div class="ds-meta">NAGMP · Raster · Updated 30 May 2026</div></div><span class="tag">Raster</span></div>
+              <div class="dataset-row" onclick="selectDataset(this,2)"><div><div class="ds-name">Odisha Block-14 Borehole Log Set</div><div class="ds-meta">SGM · CSV/Log · Updated 22 May 2026</div></div><span class="tag">Point</span></div>
+              <div class="dataset-row" onclick="selectDataset(this,3)"><div><div class="ds-name">Deccan Trap Remote Sensing Composite</div><div class="ds-meta">Remote Sensing · GeoTIFF · Updated 18 May 2026</div></div><span class="tag">Raster</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h4>Dataset metadata</h4></div>
+            <div class="panel-body">
+              <div style="height:120px; border-radius:var(--radius); background:linear-gradient(135deg,#1c2f38,#0f2026); border:1px solid var(--stroke); margin-bottom:14px; position:relative; overflow:hidden;">
+                <svg viewBox="0 0 300 120" style="width:100%;height:100%;"><path d="M0,60 Q75,20 150,55 T300,50" stroke="#4fa8a3" stroke-width="1.5" fill="none" opacity="0.7"/><path d="M0,80 Q75,50 150,75 T300,70" stroke="#c1793f" stroke-width="1.5" fill="none" opacity="0.6"/></svg>
+              </div>
+              <div class="meta-row"><span class="k">Programme</span><span class="v" id="metaProg">NGCM</span></div>
+              <div class="meta-row"><span class="k">Format</span><span class="v" id="metaFormat">Vector (SHP)</span></div>
+              <div class="meta-row"><span class="k">Coordinate system</span><span class="v">WGS84 / UTM 44N</span></div>
+              <div class="meta-row"><span class="k">Coverage</span><span class="v" id="metaCoverage">Bastar Craton, CG</span></div>
+              <div class="meta-row"><span class="k">Access level</span><span class="v">Tier 2 — Approval required</span></div>
+              <div style="display:flex; gap:8px; margin-top:16px;">
+                <button class="btn primary" style="flex:1;">Request access</button>
+                <button class="btn" style="flex:1;">Preview</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- GIS -->
+      <section class="view" id="view-gis">
+        <div class="view-head"><div><h2>Interactive GIS Map Viewer</h2><p>OGC-compliant multi-layer map viewer with spatial analysis tools — 2D/3D, satellite &amp; terrain basemaps.</p></div></div>
+        <div class="gis-layout">
+          <div class="panel">
+            <div class="panel-head"><h4>Layers</h4></div>
+            <div class="panel-body">
+              <div class="side-group-label" style="padding-left:0;">Base layer</div>
+              <div class="basemap-opacity">Opacity<input type="range" id="basemapOpacitySlider" min="0" max="100" value="100" oninput="setBasemapOpacity(this.value)"><span id="basemapOpacityVal" class="mono">100%</span></div>
+              <div class="side-group-label" style="padding-left:0;">Geological</div>
+              <div class="layer-row"><label><input type="checkbox" checked onchange="toggleLayer('layer-geo', this)"><span>Lithology boundaries</span></label><input type="range" min="0" max="100" value="55" oninput="setLayerOpacity('layer-geo', this.value)"></div>
+              <div class="layer-row"><label><input type="checkbox" checked onchange="toggleLayer('layer-fault', this)"><span>Fault lines</span></label><input type="range" min="0" max="100" value="80" oninput="setLayerOpacity('layer-fault', this.value)"></div>
+              <div class="side-group-label" style="padding-left:0;">Geophysical</div>
+              <div class="layer-row"><label><input type="checkbox" onchange="toggleLayer('layer-mag', this)"><span>Magnetic anomaly grid</span></label><input type="range" min="0" max="100" value="70" oninput="setLayerOpacity('layer-mag', this.value)"></div>
+              <div class="side-group-label" style="padding-left:0;">AI Layers</div>
+              <div class="layer-row"><label><input type="checkbox" checked onchange="toggleLayer('layer-prospect', this)"><span>Prospectivity heat zones</span></label><input type="range" min="0" max="100" value="45" oninput="setLayerOpacity('layer-prospect', this.value)"></div>
+              <div class="layer-row"><label><input type="checkbox" onchange="toggleLayer('layer-points', this)"><span>Sample points</span></label><input type="range" min="0" max="100" value="100" oninput="setLayerOpacity('layer-points', this.value)"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="map-stage">
+              <div id="glMap"></div>
+              <div class="gl-loading" id="glLoading"><div class="spin"></div><span>Loading map tiles…</span></div>
+
+              <div class="basemap-switcher">
+                <button class="basemap-btn active" data-bm="streets" onclick="setBasemap('streets', this)">Street</button>
+                <button class="basemap-btn" data-bm="osm" onclick="setBasemap('osm', this)">OpenStreetMap</button>
+                <button class="basemap-btn" data-bm="satellite" onclick="setBasemap('satellite', this)">Satellite</button>
+                <button class="basemap-btn" data-bm="terrain" onclick="setBasemap('terrain', this)">Terrain</button>
+              </div>
+
+              <div class="dim-toggle">
+                <button class="dim-btn active" id="dim2dBtn" onclick="setMapDimension('2d')">2D</button>
+                <button class="dim-btn" id="dim3dBtn" onclick="setMapDimension('3d')">3D</button>
+              </div>
+
+              <div class="map-toolbar2">
+                <button title="Query" onclick="glQueryMode()">◎</button>
+                <button title="Measure" onclick="glMeasureMode()">📏</button>
+                <button title="Reset view" onclick="resetMapView()">⟲</button>
+              </div>
+
+              <div class="map-hud" id="mapHud">CRS: <b>EPSG:32644</b><br>Center: <span id="hudCenter">20.940°N, 82.180°E</span><br>Zoom: <span id="hudZoom">6.2</span> · Pitch: <span id="hudPitch">0°</span></div>
+
+              <div class="minimap-wrap"><div class="mm-label">Overview</div><div id="glMiniMap"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI/ML -->
+      <section class="view" id="view-ai">
+        <div class="view-head"><div><h2>Geoscientific Model Dashboard</h2><p>Mineral prospectivity models, anomaly detection and prediction outputs.</p></div><button class="btn primary">Run new model</button></div>
+        <div class="ai-grid">
+          <div class="panel">
+            <div class="panel-head"><h4>Model execution status</h4></div>
+            <div class="panel-body">
+              <div class="model-row"><div><div style="font-size:13px; font-weight:500;">MPA-Prospectivity-07</div><div style="font-size:11px; color:var(--text-faint);">Bastar Craton AOI</div></div><span class="status-dot running">running</span></div>
+              <div class="model-row"><div><div style="font-size:13px; font-weight:500;">Anomaly-Detect-Geochem-3</div><div style="font-size:11px; color:var(--text-faint);">Singhbhum block</div></div><span class="status-dot running">running</span></div>
+              <div class="model-row"><div><div style="font-size:13px; font-weight:500;">Pattern-Recognition-RS-2</div><div style="font-size:11px; color:var(--text-faint);">Deccan Trap composite</div></div><span class="status-dot queued">queued</span></div>
+              <div class="model-row"><div><div style="font-size:13px; font-weight:500;">Classification-Lithology-1</div><div style="font-size:11px; color:var(--text-faint);">Odisha block-14</div></div><span class="status-dot queued">queued</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h4>Prediction confidence — MPA-07</h4></div>
+            <div class="panel-body">
+              <div style="font-family:'IBM Plex Mono'; font-size:26px; font-weight:600;">87.4%</div>
+              <div class="confidence-bar"><div class="confidence-fill" style="width:87%;"></div></div>
+              <p style="font-size:11px; color:var(--text-faint); margin-top:16px; line-height:1.6;">Model trained on 14,880 NGCM geochemical points cross-referenced with 5,545 remote sensing tiles. Validation accuracy 0.91 (k-fold, n=10).</p>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h4>Outputs — MPA-Prospectivity-07</h4></div>
+          <div class="panel-body">
+            <div class="output-chip">✔ &nbsp; Prospectivity Index Map — <span class="mono" style="color:var(--text-faint);">generated 09:14</span></div>
+            <div class="output-chip">✔ &nbsp; Target Zones (3 identified) — <span class="mono" style="color:var(--text-faint);">high-confidence: Zone B</span></div>
+            <div class="output-chip">✔ &nbsp; Exploration Recommendation Report — <span class="mono" style="color:var(--text-faint);">PDF, 12 pages</span></div>
+            <div class="output-chip">✔ &nbsp; Confidence Score Layer — <span class="mono" style="color:var(--text-faint);">exportable to GIS</span></div>
+          </div>
+        </div>
+
+        <!-- ============ MINERAL PROSPECTIVITY ANALYSIS (MPA) MODULE ============ -->
+        <div class="panel" style="margin-top:16px;">
+          <div class="panel-head">
+            <h4>Mineral Prospectivity Analysis — Model &amp; Map Catalog</h4>
+            <span class="tag">Beta module</span>
+          </div>
+          <div class="panel-body">
+            <p style="font-size:12px; color:var(--text-dim); line-height:1.6; max-width:920px;">
+              Browse data-driven prospectivity maps generated across DPIIC programme areas. Modelling conventions follow
+              established predictive-mapping practice referenced from GSI aerogeophysical &amp; geochemical baseline
+              programmes, USGS mineral-systems &amp; MRDS-style deposit modelling, and FTK-based fuzzy/weights-of-evidence
+              targeting frameworks. All maps below are illustrative placeholders for prototype review, not validated outputs.
+            </p>
+
+            <div class="mpa-layout" style="margin-top:16px;">
+              <!-- FILTERS -->
+              <div class="panel">
+                <div class="panel-head"><h4>Search Catalog</h4></div>
+                <div class="panel-body">
+                  <div class="search-box"><input type="text" id="mpaSearchInput" placeholder="Search MPA maps, AOIs…" oninput="filterMPA()"></div>
+
+                  <div class="side-group-label" style="padding-left:0;">Mineral / Mineral System</div>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-mineral" value="porphyry-cuau" checked onchange="filterMPA()"> Cu–Au Porphyry</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-mineral" value="orogenic-gold" checked onchange="filterMPA()"> Orogenic Gold</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-mineral" value="iocg" checked onchange="filterMPA()"> IOCG</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-mineral" value="ni-cu-pge" checked onchange="filterMPA()"> Ni–Cu–PGE (Magmatic)</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-mineral" value="ree-carbonatite" checked onchange="filterMPA()"> REE–Carbonatite</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-mineral" value="kimberlite" checked onchange="filterMPA()"> Kimberlite / Diamond</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-mineral" value="bif-iron" onchange="filterMPA()"> BIF-hosted Iron</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-mineral" value="bauxite" onchange="filterMPA()"> Bauxite–Laterite</label>
+
+                  <div class="side-group-label" style="padding-left:0; margin-top:10px;">Algorithm</div>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-algo" value="rf" checked onchange="filterMPA()"> Random Forest (RF)</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-algo" value="cnn" checked onchange="filterMPA()"> CNN</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-algo" value="xgb" checked onchange="filterMPA()"> XGBoost</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-algo" value="svm" checked onchange="filterMPA()"> SVM</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-algo" value="woe" checked onchange="filterMPA()"> Weights of Evidence</label>
+                  <label class="check-row"><input type="checkbox" class="mpa-filter mpa-algo" value="fuzzy" checked onchange="filterMPA()"> Fuzzy AHP</label>
+
+                  <button class="btn" style="width:100%; margin-top:14px;" onclick="resetMPAFilters()">Reset filters</button>
+                </div>
+              </div>
+
+              <!-- RESULTS / CATALOG -->
+              <div class="panel">
+                <div class="panel-head"><h4 id="mpaResultsCount">Results — 6 of 6 models</h4></div>
+                <div class="mpa-catalog-grid" id="mpaCatalogGrid">
+
+                  <div class="mpa-card selected" data-mineral="porphyry-cuau" data-algo="rf" data-name="cu au porphyry bastar craton" onclick="selectMPA(this,0)">
+                    <div class="mpa-thumb">
+                      <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+                        <defs><radialGradient id="mg0a" cx="35%" cy="45%" r="55%"><stop offset="0%" stop-color="var(--copper)" stop-opacity="0.9"/><stop offset="60%" stop-color="var(--amber)" stop-opacity="0.35"/><stop offset="100%" stop-color="#16323a" stop-opacity="0"/></radialGradient>
+                        <radialGradient id="mg0b" cx="72%" cy="65%" r="40%"><stop offset="0%" stop-color="var(--copper)" stop-opacity="0.7"/><stop offset="100%" stop-color="#16323a" stop-opacity="0"/></radialGradient></defs>
+                        <rect width="200" height="100" fill="#0f2026"/>
+                        <rect width="200" height="100" fill="url(#mg0a)"/><rect width="200" height="100" fill="url(#mg0b)"/>
+                        <circle cx="34" cy="44" r="3" fill="#eceee8"/><circle cx="73" cy="64" r="2.4" fill="#eceee8"/>
+                      </svg>
+                    </div>
+                    <div class="mpa-card-body">
+                      <h5>Cu–Au Porphyry Prospectivity</h5>
+                      <div class="mpa-card-meta">Bastar Craton AOI · Chhattisgarh</div>
+                      <span class="chip-sm copper">RF</span><span class="chip-sm">AUC 0.91</span>
+                    </div>
+                  </div>
+
+                  <div class="mpa-card" data-mineral="orogenic-gold" data-algo="cnn" data-name="orogenic gold singhbhum shear zone" onclick="selectMPA(this,1)">
+                    <div class="mpa-thumb">
+                      <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+                        <defs><radialGradient id="mg1a" cx="55%" cy="30%" r="50%"><stop offset="0%" stop-color="var(--amber)" stop-opacity="0.9"/><stop offset="60%" stop-color="var(--teal)" stop-opacity="0.3"/><stop offset="100%" stop-color="#16323a" stop-opacity="0"/></radialGradient>
+                        <radialGradient id="mg1b" cx="25%" cy="75%" r="35%"><stop offset="0%" stop-color="var(--amber)" stop-opacity="0.6"/><stop offset="100%" stop-color="#16323a" stop-opacity="0"/></radialGradient></defs>
+                        <rect width="200" height="100" fill="#0f2026"/>
+                        <rect width="200" height="100" fill="url(#mg1a)"/><rect width="200" height="100" fill="url(#mg1b)"/>
+                        <circle cx="54" cy="30" r="3" fill="#eceee8"/><circle cx="25" cy="75" r="2.2" fill="#eceee8"/>
+                      </svg>
+                    </div>
+                    <div class="mpa-card-body">
+                      <h5>Orogenic Gold Targeting</h5>
+                      <div class="mpa-card-meta">Singhbhum Shear Zone · Jharkhand</div>
+                      <span class="chip-sm teal">CNN</span><span class="chip-sm">AUC 0.88</span>
+                    </div>
+                  </div>
+
+                  <div class="mpa-card" data-mineral="iocg" data-algo="xgb" data-name="iocg chhattisgarh odisha belt" onclick="selectMPA(this,2)">
+                    <div class="mpa-thumb">
+                      <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+                        <defs><radialGradient id="mg2a" cx="65%" cy="55%" r="55%"><stop offset="0%" stop-color="var(--teal)" stop-opacity="0.85"/><stop offset="55%" stop-color="var(--copper)" stop-opacity="0.35"/><stop offset="100%" stop-color="#16323a" stop-opacity="0"/></radialGradient></defs>
+                        <rect width="200" height="100" fill="#0f2026"/>
+                        <rect width="200" height="100" fill="url(#mg2a)"/>
+                        <circle cx="66" cy="54" r="3" fill="#eceee8"/>
+                      </svg>
+                    </div>
+                    <div class="mpa-card-body">
+                      <h5>IOCG Prospectivity Map</h5>
+                      <div class="mpa-card-meta">Chhattisgarh–Odisha Belt</div>
+                      <span class="chip-sm">XGB</span><span class="chip-sm">AUC 0.85</span>
+                    </div>
+                  </div>
+
+                  <div class="mpa-card" data-mineral="ni-cu-pge" data-algo="woe" data-name="ni cu pge sukinda ultramafic belt" onclick="selectMPA(this,3)">
+                    <div class="mpa-thumb">
+                      <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+                        <defs><radialGradient id="mg3a" cx="40%" cy="60%" r="50%"><stop offset="0%" stop-color="var(--malachite)" stop-opacity="0.9"/><stop offset="60%" stop-color="var(--teal)" stop-opacity="0.3"/><stop offset="100%" stop-color="#16323a" stop-opacity="0"/></radialGradient></defs>
+                        <rect width="200" height="100" fill="#0f2026"/>
+                        <rect width="200" height="100" fill="url(#mg3a)"/>
+                        <circle cx="41" cy="59" r="3" fill="#eceee8"/>
+                      </svg>
+                    </div>
+                    <div class="mpa-card-body">
+                      <h5>Ni–Cu–PGE Magmatic Targeting</h5>
+                      <div class="mpa-card-meta">Sukinda Ultramafic Belt · Odisha</div>
+                      <span class="chip-sm malachite">WofE</span><span class="chip-sm">AUC 0.82</span>
+                    </div>
+                  </div>
+
+                  <div class="mpa-card" data-mineral="ree-carbonatite" data-algo="fuzzy" data-name="ree carbonatite newania amba dongar" onclick="selectMPA(this,4)">
+                    <div class="mpa-thumb">
+                      <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+                        <defs><radialGradient id="mg4a" cx="58%" cy="40%" r="50%"><stop offset="0%" stop-color="var(--amber)" stop-opacity="0.85"/><stop offset="60%" stop-color="var(--copper)" stop-opacity="0.3"/><stop offset="100%" stop-color="#16323a" stop-opacity="0"/></radialGradient></defs>
+                        <rect width="200" height="100" fill="#0f2026"/>
+                        <rect width="200" height="100" fill="url(#mg4a)"/>
+                        <circle cx="59" cy="39" r="3" fill="#eceee8"/>
+                      </svg>
+                    </div>
+                    <div class="mpa-card-body">
+                      <h5>REE–Carbonatite Prospectivity</h5>
+                      <div class="mpa-card-meta">Newania–Amba Dongar Trend · RJ/GJ</div>
+                      <span class="chip-sm amber">Fuzzy AHP</span><span class="chip-sm">AUC 0.79</span>
+                    </div>
+                  </div>
+
+                  <div class="mpa-card" data-mineral="kimberlite" data-algo="svm" data-name="kimberlite diamond bundelkhand craton" onclick="selectMPA(this,5)">
+                    <div class="mpa-thumb">
+                      <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+                        <defs><radialGradient id="mg5a" cx="30%" cy="35%" r="45%"><stop offset="0%" stop-color="var(--teal)" stop-opacity="0.9"/><stop offset="60%" stop-color="var(--malachite)" stop-opacity="0.3"/><stop offset="100%" stop-color="#16323a" stop-opacity="0"/></radialGradient>
+                        <radialGradient id="mg5b" cx="75%" cy="70%" r="30%"><stop offset="0%" stop-color="var(--teal)" stop-opacity="0.6"/><stop offset="100%" stop-color="#16323a" stop-opacity="0"/></radialGradient></defs>
+                        <rect width="200" height="100" fill="#0f2026"/>
+                        <rect width="200" height="100" fill="url(#mg5a)"/><rect width="200" height="100" fill="url(#mg5b)"/>
+                        <circle cx="30" cy="35" r="3" fill="#eceee8"/><circle cx="75" cy="70" r="2.2" fill="#eceee8"/>
+                      </svg>
+                    </div>
+                    <div class="mpa-card-body">
+                      <h5>Kimberlite / Diamond Targeting</h5>
+                      <div class="mpa-card-meta">Bundelkhand Craton · MP/UP</div>
+                      <span class="chip-sm">SVM</span><span class="chip-sm">AUC 0.84</span>
+                    </div>
+                  </div>
+
+                  <div class="mpa-empty" id="mpaEmptyState" style="display:none;">No MPA maps match the selected filters. Try broadening your mineral system or algorithm selection.</div>
+                </div>
+              </div>
+
+              <!-- PREVIEW / METADATA -->
+              <div class="panel">
+                <div class="panel-head"><h4>Map Preview</h4></div>
+                <div class="panel-body">
+                  <div style="height:170px; border-radius:var(--radius); background:#0f2026; border:1px solid var(--stroke); position:relative; overflow:hidden;">
+                    <svg class="mpa-preview-map active" data-idx="0" viewBox="0 0 320 220" style="width:100%; height:100%; position:absolute; inset:0;">
+                      <defs><radialGradient id="pv0a" cx="38%" cy="42%" r="55%"><stop offset="0%" stop-color="var(--copper)" stop-opacity="0.95"/><stop offset="55%" stop-color="var(--amber)" stop-opacity="0.4"/><stop offset="100%" stop-color="#0f2026" stop-opacity="0"/></radialGradient>
+                      <radialGradient id="pv0b" cx="74%" cy="68%" r="35%"><stop offset="0%" stop-color="var(--copper)" stop-opacity="0.75"/><stop offset="100%" stop-color="#0f2026" stop-opacity="0"/></radialGradient></defs>
+                      <path d="M10,40 C90,10 180,60 310,30" stroke="#2a3f48" stroke-width="1" fill="none" opacity="0.6"/>
+                      <path d="M10,120 C120,90 200,150 310,110" stroke="#2a3f48" stroke-width="1" fill="none" opacity="0.6"/>
+                      <rect width="320" height="220" fill="url(#pv0a)"/><rect width="320" height="220" fill="url(#pv0b)"/>
+                      <circle cx="122" cy="94" r="4" fill="#eceee8"/><text x="130" y="97" font-size="10" fill="#eceee8" font-family="IBM Plex Mono">Zone A</text>
+                      <circle cx="238" cy="150" r="3.2" fill="#eceee8"/><text x="246" y="153" font-size="10" fill="#eceee8" font-family="IBM Plex Mono">Zone B</text>
+                    </svg>
+                    <svg class="mpa-preview-map" data-idx="1" viewBox="0 0 320 220" style="width:100%; height:100%; position:absolute; inset:0; display:none;">
+                      <defs><radialGradient id="pv1a" cx="55%" cy="28%" r="50%"><stop offset="0%" stop-color="var(--amber)" stop-opacity="0.95"/><stop offset="60%" stop-color="var(--teal)" stop-opacity="0.3"/><stop offset="100%" stop-color="#0f2026" stop-opacity="0"/></radialGradient></defs>
+                      <path d="M10,60 C110,20 210,90 310,50" stroke="#2a3f48" stroke-width="1" fill="none" opacity="0.6"/>
+                      <rect width="320" height="220" fill="url(#pv1a)"/>
+                      <circle cx="176" cy="62" r="4" fill="#eceee8"/><text x="184" y="65" font-size="10" fill="#eceee8" font-family="IBM Plex Mono">Zone A</text>
+                    </svg>
+                    <svg class="mpa-preview-map" data-idx="2" viewBox="0 0 320 220" style="width:100%; height:100%; position:absolute; inset:0; display:none;">
+                      <defs><radialGradient id="pv2a" cx="62%" cy="55%" r="55%"><stop offset="0%" stop-color="var(--teal)" stop-opacity="0.9"/><stop offset="55%" stop-color="var(--copper)" stop-opacity="0.3"/><stop offset="100%" stop-color="#0f2026" stop-opacity="0"/></radialGradient></defs>
+                      <rect width="320" height="220" fill="url(#pv2a)"/>
+                      <circle cx="198" cy="121" r="4" fill="#eceee8"/><text x="206" y="124" font-size="10" fill="#eceee8" font-family="IBM Plex Mono">Zone A</text>
+                    </svg>
+                    <svg class="mpa-preview-map" data-idx="3" viewBox="0 0 320 220" style="width:100%; height:100%; position:absolute; inset:0; display:none;">
+                      <defs><radialGradient id="pv3a" cx="38%" cy="60%" r="50%"><stop offset="0%" stop-color="var(--malachite)" stop-opacity="0.95"/><stop offset="60%" stop-color="var(--teal)" stop-opacity="0.3"/><stop offset="100%" stop-color="#0f2026" stop-opacity="0"/></radialGradient></defs>
+                      <rect width="320" height="220" fill="url(#pv3a)"/>
+                      <circle cx="122" cy="132" r="4" fill="#eceee8"/><text x="130" y="135" font-size="10" fill="#eceee8" font-family="IBM Plex Mono">Zone A</text>
+                    </svg>
+                    <svg class="mpa-preview-map" data-idx="4" viewBox="0 0 320 220" style="width:100%; height:100%; position:absolute; inset:0; display:none;">
+                      <defs><radialGradient id="pv4a" cx="56%" cy="38%" r="50%"><stop offset="0%" stop-color="var(--amber)" stop-opacity="0.9"/><stop offset="60%" stop-color="var(--copper)" stop-opacity="0.3"/><stop offset="100%" stop-color="#0f2026" stop-opacity="0"/></radialGradient></defs>
+                      <rect width="320" height="220" fill="url(#pv4a)"/>
+                      <circle cx="180" cy="84" r="4" fill="#eceee8"/><text x="188" y="87" font-size="10" fill="#eceee8" font-family="IBM Plex Mono">Zone A</text>
+                    </svg>
+                    <svg class="mpa-preview-map" data-idx="5" viewBox="0 0 320 220" style="width:100%; height:100%; position:absolute; inset:0; display:none;">
+                      <defs><radialGradient id="pv5a" cx="30%" cy="34%" r="45%"><stop offset="0%" stop-color="var(--teal)" stop-opacity="0.95"/><stop offset="60%" stop-color="var(--malachite)" stop-opacity="0.3"/><stop offset="100%" stop-color="#0f2026" stop-opacity="0"/></radialGradient>
+                      <radialGradient id="pv5b" cx="76%" cy="72%" r="30%"><stop offset="0%" stop-color="var(--teal)" stop-opacity="0.6"/><stop offset="100%" stop-color="#0f2026" stop-opacity="0"/></radialGradient></defs>
+                      <rect width="320" height="220" fill="url(#pv5a)"/><rect width="320" height="220" fill="url(#pv5b)"/>
+                      <circle cx="96" cy="75" r="4" fill="#eceee8"/><text x="104" y="78" font-size="10" fill="#eceee8" font-family="IBM Plex Mono">Zone A</text>
+                    </svg>
+                  </div>
+                  <div class="mpa-legend"><span class="lbl">Low</span><div class="bar"></div><span class="lbl">High</span></div>
+                  <div style="margin-top:14px;">
+                    <div class="meta-row"><span class="k">Model</span><span class="v" id="mpaMetaName">Cu–Au Porphyry Prospectivity</span></div>
+                    <div class="meta-row"><span class="k">Algorithm</span><span class="v" id="mpaMetaAlgo">Random Forest (RF)</span></div>
+                    <div class="meta-row"><span class="k">Validation (AUC)</span><span class="v" id="mpaMetaAuc">0.91</span></div>
+                    <div class="meta-row"><span class="k">AOI</span><span class="v" id="mpaMetaAoi">Bastar Craton, CG</span></div>
+                    <div class="meta-row"><span class="k">Last updated</span><span class="v" id="mpaMetaDate">08 Jul 2026</span></div>
+                  </div>
+                  <div class="mpa-source-note" id="mpaMetaSource">Reference style: GSI aerogeophysical + NGCM geochemical grids, USGS MRDS-analog deposit library, FTK weights-of-evidence targeting framework.</div>
+                  <div style="display:flex; gap:8px; margin-top:14px;">
+                    <button class="btn primary" style="flex:1;">Export layer to GIS</button>
+                    <button class="btn" style="flex:1;">Add to workspace</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3D VIEWER -->
+      <section class="view" id="view-viewer3d">
+        <div class="view-head"><div><h2>3D Subsurface Viewer</h2><p>Geological model, borehole visualization, block/voxel models, cross-sections, measurement and AI-assisted interpretation.</p></div></div>
+        <div class="v3d-layout">
+          <div class="panel">
+            <div class="v3d-stage">
+              <div id="v3dCanvas"></div>
+              <div class="gl-loading" id="v3dLoading"><div class="spin"></div><span>Building geological model…</span></div>
+              <div class="v3d-labels" id="v3dLabels"></div>
+              <div class="v3d-crosshair" id="v3dCrosshair"></div>
+
+              <div class="basemap-switcher">
+                <button class="basemap-btn active" data-mode="standard" onclick="v3dSetMode('standard', this)">Standard</button>
+                <button class="basemap-btn" data-mode="block" onclick="v3dSetMode('block', this)">Block Model</button>
+                <button class="basemap-btn" data-mode="voxel" onclick="v3dSetMode('voxel', this)">Voxel Model</button>
+              </div>
+
+              <div class="dim-toggle">
+                <button class="dim-btn active" id="camOrbitBtn" onclick="v3dSetCamMode('orbit')">Orbit</button>
+                <button class="dim-btn" id="camWalkBtn" onclick="v3dSetCamMode('walk')">Walk</button>
+                <button class="dim-btn" id="camFlyBtn" onclick="v3dFlyThrough()">Fly-through</button>
+              </div>
+
+              <div class="map-toolbar2">
+                <button title="Reset view" onclick="v3dResetView()">⟲</button>
+                <button title="Exploded view" id="v3dExplodeBtn" onclick="v3dToggleExplode()">⛶</button>
+                <button title="Measure" id="v3dMeasureBtn" onclick="v3dToggleMeasure()">📏</button>
+                <button title="Add note / mark point" id="v3dNoteBtn" onclick="v3dToggleNoteMode()">📍</button>
+                <button title="Export section (PNG)" onclick="v3dExportPNG()">⭳</button>
+              </div>
+
+              <div class="v3d-legend" id="v3dLegend"></div>
+              <div class="v3d-status" id="v3dStatus">Center: <span id="v3dCoord">20.940°N, 82.180°E</span><br>Cursor depth: <span id="v3dDepth">—</span></div>
+            </div>
+          </div>
+
+          <div class="panel v3d-side">
+            <div class="v3d-tabs">
+              <button class="v3d-tab active" data-tab="layers" onclick="v3dTab('layers',this)">Layers</button>
+              <button class="v3d-tab" data-tab="model" onclick="v3dTab('model',this)">Model</button>
+              <button class="v3d-tab" data-tab="boreholes" onclick="v3dTab('boreholes',this)">Boreholes</button>
+              <button class="v3d-tab" data-tab="section" onclick="v3dTab('section',this)">Section</button>
+              <button class="v3d-tab" data-tab="timeline" onclick="v3dTab('timeline',this)">Timeline</button>
+              <button class="v3d-tab" data-tab="analysis" onclick="v3dTab('analysis',this)">Analysis</button>
+              <button class="v3d-tab" data-tab="ai" onclick="v3dTab('ai',this)">AI &amp; Sim</button>
+              <button class="v3d-tab" data-tab="notes" onclick="v3dTab('notes',this)">Notes</button>
+            </div>
+
+            <!-- LAYERS -->
+            <div class="v3d-tabpanel active" data-tabpanel="layers">
+              <div class="v3d-subhead">Geological features</div>
+              <div class="layer-row"><label><input type="checkbox" checked onchange="v3dToggleGroup('strata', this)"><span>Stratigraphic layers</span></label><input type="range" min="0" max="100" value="100" oninput="v3dGroupOpacity('strata', this.value)"></div>
+              <div class="layer-row"><label><input type="checkbox" checked onchange="v3dToggleGroup('fault', this)"><span>Fault blocks</span></label><input type="range" min="0" max="100" value="90" oninput="v3dGroupOpacity('fault', this.value)"></div>
+              <div class="layer-row"><label><input type="checkbox" checked onchange="v3dToggleGroup('fold', this)"><span>Fold structures</span></label><input type="range" min="0" max="100" value="85" oninput="v3dGroupOpacity('fold', this.value)"></div>
+              <div class="layer-row"><label><input type="checkbox" onchange="v3dToggleGroup('shear', this)"><span>Shear zones</span></label><input type="range" min="0" max="100" value="55" oninput="v3dGroupOpacity('shear', this.value)"></div>
+              <div class="layer-row"><label><input type="checkbox" checked onchange="v3dToggleGroup('intrusion', this)"><span>Intrusive bodies</span></label><input type="range" min="0" max="100" value="95" oninput="v3dGroupOpacity('intrusion', this.value)"></div>
+              <div class="layer-row"><label><input type="checkbox" checked onchange="v3dToggleGroup('dyke', this)"><span>Dyke networks</span></label><input type="range" min="0" max="100" value="90" oninput="v3dGroupOpacity('dyke', this.value)"></div>
+              <div class="layer-row"><label><input type="checkbox" onchange="v3dToggleGroup('contacts', this)"><span>Geological contacts</span></label><input type="range" min="0" max="100" value="70" oninput="v3dGroupOpacity('contacts', this.value)"></div>
+              <div class="v3d-subhead">Terrain</div>
+              <div class="layer-row"><label><input type="checkbox" checked onchange="v3dToggleGroup('terrain', this)"><span>DEM / hillshade surface</span></label><input type="range" min="0" max="100" value="100" oninput="v3dGroupOpacity('terrain', this.value)"></div>
+              <div class="layer-row"><label><input type="checkbox" onchange="v3dToggleGroup('contours', this)"><span>Contours</span></label><input type="range" min="0" max="100" value="60" oninput="v3dGroupOpacity('contours', this.value)"></div>
+              <select class="v3d-select" onchange="v3dSetOverlay(this.value)">
+                <option value="none">Surface overlay: none</option>
+                <option value="magnetic">Overlay: Magnetic anomaly</option>
+                <option value="gravity">Overlay: Gravity anomaly</option>
+                <option value="geochem">Overlay: Geochemical (multi-element)</option>
+              </select>
+              <div class="v3d-subhead">Underground mine</div>
+              <div class="layer-row"><label><input type="checkbox" onchange="v3dToggleGroup('mine', this)"><span>Tunnels, shafts &amp; stopes</span></label><input type="range" min="0" max="100" value="100" oninput="v3dGroupOpacity('mine', this.value)"></div>
+              <div class="v3d-subhead">Geophysics (downhole)</div>
+              <div class="layer-row"><label><input type="checkbox" onchange="v3dToggleGroup('geophysics', this)"><span>Gamma-ray / resistivity logs</span></label><input type="range" min="0" max="100" value="80" oninput="v3dGroupOpacity('geophysics', this.value)"></div>
+            </div>
+
+            <!-- MODEL -->
+            <div class="v3d-tabpanel" data-tabpanel="model">
+              <p class="v3d-note-small">Switch model representation using the Standard / Block Model / Voxel Model control above the viewport.</p>
+              <div class="v3d-subhead">Cut-off grade</div>
+              <div class="slider-row" style="margin-bottom:6px;">
+                <input type="range" min="0" max="100" value="30" id="v3dCutoffSlider" oninput="v3dSetCutoff(this.value)">
+                <div class="slider-val" id="v3dCutoffVal">0.30% Cu-eq</div>
+              </div>
+              <div class="v3d-subhead">Resource classification</div>
+              <div class="v3d-legend-static">
+                <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-dim);padding:3px 0;"><span style="width:10px;height:10px;border-radius:2px;background:#5f9e79;display:inline-block;"></span>Measured</div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-dim);padding:3px 0;"><span style="width:10px;height:10px;border-radius:2px;background:#4fa8a3;display:inline-block;"></span>Indicated</div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-dim);padding:3px 0;"><span style="width:10px;height:10px;border-radius:2px;background:#e0a458;display:inline-block;"></span>Inferred</div>
+              </div>
+              <div class="v3d-subhead">Voxel attribute</div>
+              <select class="v3d-select" onchange="v3dSetVoxelAttr(this.value)">
+                <option value="grade">Mineral probability</option>
+                <option value="geochem">Geochemical interpolation</option>
+                <option value="density">Density model</option>
+                <option value="porosity">Porosity</option>
+                <option value="magsus">Magnetic susceptibility</option>
+              </select>
+              <div class="v3d-readout" id="v3dModelReadout">Volume: 4.62 Mm³ · Tonnage: 12.4 Mt (est.) · Blocks above cut-off: —</div>
+            </div>
+
+            <!-- BOREHOLES -->
+            <div class="v3d-tabpanel" data-tabpanel="boreholes">
+              <p class="v3d-note-small">Vertical &amp; inclined holes with lithology intervals, core recovery and assay markers. Click a hole to fly to it.</p>
+              <div id="v3dBoreholeList"></div>
+              <div class="v3d-bh-detail" id="v3dBhDetail"></div>
+            </div>
+
+            <!-- SECTION -->
+            <div class="v3d-tabpanel" data-tabpanel="section">
+              <div class="v3d-subhead">Dynamic cross-section</div>
+              <label class="check-row"><input type="checkbox" id="v3dClipEnable" onchange="v3dToggleClip(this.checked)"> Enable clipping plane</label>
+              <div class="slider-row">
+                <label>Section position (E–W)</label>
+                <input type="range" id="v3dClipSlider" min="-10" max="10" value="0" step="0.1" oninput="v3dSetClip(this.value)">
+                <div class="slider-val" id="v3dClipVal">0.0</div>
+              </div>
+              <label class="check-row"><input type="checkbox" id="v3dFenceEnable" onchange="v3dToggleFence(this.checked)"> Fence diagram (second plane, N–S)</label>
+              <div class="v3d-btnrow">
+                <button class="btn" onclick="v3dDrawSectionLine()">✎ Draw section line</button>
+                <button class="btn" onclick="v3dResetSection()">Reset</button>
+              </div>
+              <div class="v3d-subhead">Global transparency</div>
+              <div class="slider-row">
+                <input type="range" min="20" max="100" value="100" oninput="v3dSetTransparency(this.value)">
+                <div class="slider-val" id="v3dTransVal">100%</div>
+              </div>
+              <div class="v3d-btnrow">
+                <button class="btn primary" style="flex:100%;" onclick="v3dExportPNG()">Export current section (PNG)</button>
+              </div>
+            </div>
+
+            <!-- TIMELINE -->
+            <div class="v3d-tabpanel" data-tabpanel="timeline">
+              <div class="v3d-subhead">Exploration progress</div>
+              <p class="v3d-note-small">Scrub through historical drilling to see boreholes appear in the order they were drilled.</p>
+              <div class="slider-row">
+                <input type="range" id="v3dTimelineSlider" min="2018" max="2026" value="2026" step="1" oninput="v3dSetTimeline(this.value)">
+                <div class="slider-val" id="v3dTimelineVal">2026</div>
+              </div>
+              <div class="v3d-btnrow"><button class="btn" style="flex:100%;" onclick="v3dPlayTimeline()">▶ Play exploration timeline</button></div>
+              <div class="v3d-readout" id="v3dTimelineReadout">6 of 6 boreholes drilled by 2026</div>
+            </div>
+
+            <!-- ANALYSIS -->
+            <div class="v3d-tabpanel" data-tabpanel="analysis">
+              <div class="v3d-subhead">Structural readout (last measurement)</div>
+              <div class="v3d-readout" id="v3dStructReadout">Pick two points with the measure tool to compute dip, strike &amp; azimuth.</div>
+              <div class="v3d-subhead">Fracture / fault orientation — rose diagram</div>
+              <div style="display:flex; justify-content:center;"><svg id="v3dRose" width="150" height="150" viewBox="0 0 150 150"></svg></div>
+              <div class="v3d-subhead">Stereonet (equal-area, poles to planes)</div>
+              <div style="display:flex; justify-content:center;"><svg id="v3dStereo" width="150" height="150" viewBox="0 0 150 150"></svg></div>
+              <p class="v3d-note-small">Illustrative structural plots generated from the modelled fault/fold/shear orientations — not survey-grade stereonet analysis.</p>
+            </div>
+
+            <!-- AI & SIM -->
+            <div class="v3d-tabpanel" data-tabpanel="ai">
+              <div class="v3d-subhead">AI-assisted interpretation</div>
+              <div id="v3dAiList"></div>
+              <p class="v3d-note-small">Illustrative placeholders for prototype review — outputs of automated fault detection, lithology classification and drill-target recommendation models are not validated.</p>
+              <div class="v3d-subhead">Simulation &amp; modelling</div>
+              <select class="v3d-select" id="v3dSimSelect">
+                <option value="groundwater">Groundwater flow</option>
+                <option value="orebody">Ore body growth</option>
+                <option value="stress">Stress modelling</option>
+                <option value="stability">Stability analysis</option>
+                <option value="subsidence">Subsidence modelling</option>
+                <option value="mineplan">Mine planning scenario</option>
+              </select>
+              <div class="v3d-btnrow"><button class="btn primary" style="flex:100%;" onclick="v3dRunSimulation()">Run simulation</button></div>
+              <div class="v3d-readout" id="v3dSimReadout">Select a scenario and run to view illustrative outputs.</div>
+            </div>
+
+            <!-- NOTES -->
+            <div class="v3d-tabpanel" data-tabpanel="notes">
+              <div class="v3d-subhead">Annotations</div>
+              <p class="v3d-note-small">Use the 📍 tool above the viewport, then click a point on the model to drop a pin and add a note.</p>
+              <div id="v3dNotesList"></div>
+              <div class="v3d-btnrow">
+                <button class="btn" onclick="v3dShareView()">🔗 Share current view</button>
+              </div>
+              <div class="v3d-subhead">Version history</div>
+              <div id="v3dSnapshotList"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WORKSPACE -->
+      <section class="view" id="view-workspace">
+        <div class="view-head"><div><h2>Project Workspace</h2><p>Dataset assignment, processing workflow and review &amp; approval.</p></div><button class="btn primary">+ New project</button></div>
+        <div class="panel">
+          <div class="panel-head"><h4>Active projects</h4></div>
+          <div class="panel-body" style="padding:0;">
+            <div class="dataset-row"><div><div class="ds-name">Bastar Craton Prospectivity Study</div><div class="ds-meta">Lead: R. Iyer · 4 datasets · Stage: Model execution</div></div><span class="tag">In progress</span></div>
+            <div class="dataset-row"><div><div class="ds-name">Singhbhum 3D Structural Model</div><div class="ds-meta">Lead: A. Menon · 2 datasets · Stage: Review &amp; approval</div></div><span class="tag">Review</span></div>
+            <div class="dataset-row"><div><div class="ds-name">Odisha Exploration Report Q2</div><div class="ds-meta">Lead: S. Prasad · 6 datasets · Stage: Report generation</div></div><span class="tag">Drafting</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- KNOWLEDGE HUB -->
+      <section class="view" id="view-kh">
+        <div class="view-head"><div><h2>Knowledge Management System</h2><p>Research papers, SOPs and AI-assisted discovery.</p></div></div>
+        <div class="kh-grid">
+          <div class="kh-card"><div class="kh-type">SOP</div><h4>Coordinate transformation for legacy SHP layers</h4><p>Standard procedure for aligning archival shapefiles to WGS84/UTM.</p></div>
+          <div class="kh-card"><div class="kh-type">Research paper</div><h4>Aeromagnetic signatures of Cu–Fe mineralisation</h4><p>Singhbhum craton case study, cross-referenced with NAGMP survey data.</p></div>
+          <div class="kh-card"><div class="kh-type">Training video</div><h4>Using the AI/ML prospectivity module</h4><p>18-minute walkthrough of model configuration and output interpretation.</p></div>
+          <div class="kh-card"><div class="kh-type">Technical report</div><h4>NGCM geochemical grid QA methodology</h4><p>Quality checks and standardization applied prior to PostGIS ingestion.</p></div>
+          <div class="kh-card"><div class="kh-type">SOP</div><h4>Borehole log digitisation standard</h4><p>Field-to-database procedure for the 3D subsurface viewer pipeline.</p></div>
+          <div class="kh-card"><div class="kh-type">Research paper</div><h4>Remote sensing anomaly detection at scale</h4><p>Benchmarking pattern recognition across Deccan Trap composites.</p></div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="view" id="view-reports">
+        <div class="view-head"><div><h2>Reports</h2><p>Generated exploration and analysis reports.</p></div></div>
+        <div class="panel">
+          <div class="panel-head"><h4>Recent reports</h4></div>
+          <div class="panel-body" style="padding:0;">
+            <div class="dataset-row"><div><div class="ds-name">Bastar Craton — Exploration Recommendation</div><div class="ds-meta">Generated from MPA-Prospectivity-07 · 12 Jun 2026</div></div><span class="tag">PDF</span></div>
+            <div class="dataset-row"><div><div class="ds-name">Singhbhum 3D Structural Summary</div><div class="ds-meta">Generated from workspace project · 30 May 2026</div></div><span class="tag">PDF</span></div>
+            <div class="dataset-row"><div><div class="ds-name">NAGMP Odisha Block-14 QA Report</div><div class="ds-meta">Data processing layer output · 22 May 2026</div></div><span class="tag">PDF</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADMIN -->
+      <section class="view" id="view-admin">
+        <div class="view-head"><div><h2>Administration</h2><p>RBAC roles, access requests and platform configuration.</p></div></div>
+        <div class="panel">
+          <div class="panel-head"><h4>Pending data access requests</h4></div>
+          <div class="panel-body" style="padding:0;">
+            <div class="dataset-row"><div><div class="ds-name">R. Iyer — NAGMP Odisha block-14</div><div class="ds-meta">Requested 08:52 · GSI Scientist</div></div><div style="display:flex; gap:8px;"><button class="btn primary" style="padding:6px 12px;">Approve</button><button class="btn" style="padding:6px 12px;">Deny</button></div></div>
+            <div class="dataset-row"><div><div class="ds-name">K. Rao — SGM Borehole Log Set</div><div class="ds-meta">Requested Yesterday · Research Institute</div></div><div style="display:flex; gap:8px;"><button class="btn primary" style="padding:6px 12px;">Approve</button><button class="btn" style="padding:6px 12px;">Deny</button></div></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script>
+function openLogin(){ document.getElementById('loginOverlay').classList.add('active'); }
+function closeLogin(){ document.getElementById('loginOverlay').classList.remove('active'); }
+
+function enterSecure(){
+  const role = document.getElementById('roleSelect').value;
+  const initials = role.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userName').textContent = role;
+  closeLogin();
+  document.getElementById('public').classList.remove('active');
+  document.getElementById('secure').classList.add('active');
+  window.scrollTo(0,0);
+}
+function exitSecure(e){
+  e.preventDefault();
+  document.getElementById('secure').classList.remove('active');
+  document.getElementById('public').classList.add('active');
+  window.scrollTo(0,0);
+}
+function goCatalogue(){ openLogin(); }
+function goKH(){ openLogin(); }
+
+function showView(id, el){
+  document.querySelectorAll('.side-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.getElementById('crumbView').textContent = el.textContent.trim();
+  if(id === 'gis'){
+    if(!gisMapInitialized){ gisMapInitialized = true; setTimeout(initGisMap, 30); }
+    else setTimeout(()=>{ if(glMap) glMap.resize(); if(glMiniMap) glMiniMap.resize(); }, 30);
+  }
+  if(id === 'viewer3d'){
+    if(!v3dInitialized){ v3dInitialized = true; setTimeout(initV3D, 30); }
+    else setTimeout(v3dOnResize, 30);
+  }
+}
+
+const datasetMeta = [
+  {name:'Bastar Craton — Geochemical Grid v3', prog:'NGCM', format:'Vector (SHP)', coverage:'Bastar Craton, CG'},
+  {name:'Singhbhum Aeromagnetic Survey', prog:'NAGMP', format:'Raster (GeoTIFF)', coverage:'Singhbhum, JH'},
+  {name:'Odisha Block-14 Borehole Log Set', prog:'SGM', format:'Point (CSV)', coverage:'Odisha Block-14'},
+  {name:'Deccan Trap Remote Sensing Composite', prog:'Remote Sensing', format:'Raster (GeoTIFF)', coverage:'Deccan Trap region'}
+];
+function selectDataset(el, idx){
+  document.querySelectorAll('.dataset-row').forEach(r=>r.classList.remove('selected'));
+  el.classList.add('selected');
+  const d = datasetMeta[idx];
+  document.getElementById('metaProg').textContent = d.prog;
+  document.getElementById('metaFormat').textContent = d.format;
+  document.getElementById('metaCoverage').textContent = d.coverage;
+}
+
+const mpaMeta = [
+  {name:'Cu–Au Porphyry Prospectivity', algo:'Random Forest (RF)', auc:'0.91', aoi:'Bastar Craton, CG', date:'08 Jul 2026', source:'Reference style: GSI aerogeophysical + NGCM geochemical grids, USGS MRDS-analog deposit library, FTK weights-of-evidence targeting framework.'},
+  {name:'Orogenic Gold Targeting', algo:'Convolutional Neural Network (CNN)', auc:'0.88', aoi:'Singhbhum Shear Zone, JH', date:'02 Jul 2026', source:'Reference style: GSI structural/lithology layers + NAGMP aeromagnetic tiles, USGS orogenic-gold mineral-systems criteria, FTK deep-learning targeting.'},
+  {name:'IOCG Prospectivity Map', algo:'XGBoost', auc:'0.85', aoi:'Chhattisgarh–Odisha Belt', date:'27 Jun 2026', source:'Reference style: GSI gravity/magnetic composites, USGS IOCG deposit-model criteria, FTK gradient-boosted targeting workflow.'},
+  {name:'Ni–Cu–PGE Magmatic Targeting', algo:'Weights of Evidence', auc:'0.82', aoi:'Sukinda Ultramafic Belt, OD', date:'19 Jun 2026', source:'Reference style: GSI ultramafic lithology mapping, USGS magmatic Ni–Cu–PGE mineral-systems model, FTK weights-of-evidence framework.'},
+  {name:'REE–Carbonatite Prospectivity', algo:'Fuzzy AHP', auc:'0.79', aoi:'Newania–Amba Dongar Trend, RJ/GJ', date:'14 Jun 2026', source:'Reference style: GSI carbonatite complex mapping, USGS REE deposit-model analogs, FTK fuzzy analytic hierarchy targeting.'},
+  {name:'Kimberlite / Diamond Targeting', algo:'Support Vector Machine (SVM)', auc:'0.84', aoi:'Bundelkhand Craton, MP/UP', date:'05 Jun 2026', source:'Reference style: GSI craton-scale structural framework, USGS kimberlite pathfinder-mineral criteria, FTK classifier-based targeting.'}
+];
+function selectMPA(el, idx){
+  document.querySelectorAll('.mpa-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.querySelectorAll('.mpa-preview-map').forEach(m=>{ m.style.display='none'; m.classList.remove('active'); });
+  const map = document.querySelector('.mpa-preview-map[data-idx="'+idx+'"]');
+  if(map){ map.style.display='block'; map.classList.add('active'); }
+  const m = mpaMeta[idx];
+  document.getElementById('mpaMetaName').textContent = m.name;
+  document.getElementById('mpaMetaAlgo').textContent = m.algo;
+  document.getElementById('mpaMetaAuc').textContent = m.auc;
+  document.getElementById('mpaMetaAoi').textContent = m.aoi;
+  document.getElementById('mpaMetaDate').textContent = m.date;
+  document.getElementById('mpaMetaSource').textContent = m.source;
+}
+function filterMPA(){
+  const minerals = Array.from(document.querySelectorAll('.mpa-mineral:checked')).map(c=>c.value);
+  const algos = Array.from(document.querySelectorAll('.mpa-algo:checked')).map(c=>c.value);
+  const q = document.getElementById('mpaSearchInput').value.trim().toLowerCase();
+  let visible = 0;
+  document.querySelectorAll('.mpa-card').forEach(card=>{
+    const mineralOk = minerals.includes(card.dataset.mineral);
+    const algoOk = algos.includes(card.dataset.algo);
+    const searchOk = !q || card.dataset.name.includes(q);
+    const show = mineralOk && algoOk && searchOk;
+    card.style.display = show ? '' : 'none';
+    if(show) visible++;
+  });
+  document.getElementById('mpaEmptyState').style.display = visible === 0 ? 'block' : 'none';
+  document.getElementById('mpaResultsCount').textContent = 'Results — ' + visible + ' of 6 models';
+}
+function resetMPAFilters(){
+  document.querySelectorAll('.mpa-filter').forEach(c=>c.checked = true);
+  document.getElementById('mpaSearchInput').value = '';
+  filterMPA();
+}
+
+/* ============ GIS — MAPLIBRE 2D/3D MAP ============ */
+const GIS_CENTER = [82.18, 20.94]; // lng, lat — Chhattisgarh–Odisha belt
+const GIS_ZOOM = 6.2;
+
+const basemapStyles = {
+  streets: { tiles:['https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png','https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png','https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'],
+    attribution:'© OpenStreetMap contributors © CARTO', tileSize:256, maxzoom:20 },
+  osm: { tiles:['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png','https://b.tile.openstreetmap.org/{z}/{x}/{y}.png','https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+    attribution:'© OpenStreetMap contributors', tileSize:256, maxzoom:19 },
+  satellite: { tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+    attribution:'Imagery © Esri, Maxar, Earthstar Geographics', tileSize:256, maxzoom:19 },
+  terrain: { tiles:['https://a.tile.opentopomap.org/{z}/{x}/{y}.png','https://b.tile.opentopomap.org/{z}/{x}/{y}.png','https://c.tile.opentopomap.org/{z}/{x}/{y}.png'],
+    attribution:'© OpenStreetMap contributors, SRTM · © OpenTopoMap (CC-BY-SA)', tileSize:256, maxzoom:17 }
+};
+
+function mapStyleDoc(basemapKey, withTerrainSource){
+  const bm = basemapStyles[basemapKey];
+  const sources = {
+    basemap: { type:'raster', tiles:bm.tiles, tileSize:bm.tileSize, attribution:bm.attribution, maxzoom:bm.maxzoom }
+  };
+  if(withTerrainSource){
+    sources['terrain-dem'] = { type:'raster-dem', tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize:256, encoding:'terrarium', maxzoom:15 };
+  }
+  return {
+    version:8, sources,
+    layers:[ { id:'basemap', type:'raster', source:'basemap', paint:{ 'raster-opacity':1 } } ]
+  };
+}
+
+// Overlay geometries (approx lithology/fault/anomaly/prospectivity/sample data over the AOI)
+const geoLithoLines = [
+  [[80.3,22.33],[80.95,22.61],[81.45,21.9],[82.2,22.26],[83.45,22.47],[84.1,22.04]],
+  [[80.3,21.61],[81.1,21.9],[81.7,21.33],[82.5,21.61],[83.6,21.76],[84.1,21.33]],
+  [[80.3,20.9],[81.0,21.19],[81.8,20.61],[82.6,20.97],[83.7,21.04],[84.1,20.61]],
+  [[80.3,20.19],[81.1,20.47],[81.8,19.9],[82.7,20.26],[83.7,20.33],[84.1,19.9]],
+  [[80.3,19.54],[81.2,19.76],[81.9,19.33],[82.8,19.61],[83.7,19.69],[84.1,19.33]]
+];
+const faultLines = [
+  [[80.8,22.76],[82.6,19.04]],
+  [[83.2,22.76],[81.5,19.04]]
+];
+const magAnomalies = [
+  { center:[81.5,21.33], radius:60, color:'#c1793f' },
+  { center:[82.8,20.47], radius:75, color:'#4fa8a3' }
+];
+const prospectZones = [
+  { center:[81.7,21.47], radius:32, color:'#c1793f' },
+  { center:[82.9,20.33], radius:42, color:'#e0a458' },
+  { center:[81.1,20.04], radius:24, color:'#5f9e79' }
+];
+const samplePoints = [[81.4,21.76],[81.75,21.26],[82.25,21.9],[82.7,20.76],[83.2,20.19],[81.1,20.19]];
+
+function toLine(coords){ return { type:'Feature', geometry:{ type:'LineString', coordinates:coords } }; }
+function toFC(features){ return { type:'FeatureCollection', features }; }
+function circleFeature(center, color){ return { type:'Feature', properties:{ color }, geometry:{ type:'Point', coordinates:center } }; }
+
+let glMap, glMiniMap, glMiniBoxSrcReady = false, glIs3D = false, glCurrentBasemap = 'streets';
+
+function addOverlaySources(map){
+  map.addSource('src-geo', { type:'geojson', data: toFC(geoLithoLines.map(toLine)) });
+  map.addSource('src-fault', { type:'geojson', data: toFC(faultLines.map(toLine)) });
+  map.addSource('src-mag', { type:'geojson', data: toFC(magAnomalies.map(m=>circleFeature(m.center, m.color))) });
+  map.addSource('src-prospect', { type:'geojson', data: toFC(prospectZones.map(m=>circleFeature(m.center, m.color))) });
+  map.addSource('src-points', { type:'geojson', data: toFC(samplePoints.map(c=>circleFeature(c,'#eceee8'))) });
+
+  map.addLayer({ id:'layer-geo', type:'line', source:'src-geo', layout:{visibility:'visible'}, paint:{ 'line-color':'#4fa8a3', 'line-width':1.4, 'line-opacity':0.55 } });
+  map.addLayer({ id:'layer-fault', type:'line', source:'src-fault', layout:{visibility:'visible'}, paint:{ 'line-color':'#e0a458', 'line-width':1.8, 'line-dasharray':[2,1.4], 'line-opacity':0.8 } });
+  map.addLayer({ id:'layer-mag', type:'circle', source:'src-mag', layout:{visibility:'none'}, paint:{ 'circle-radius':46, 'circle-color':['get','color'], 'circle-opacity':0.28, 'circle-blur':0.5 } });
+  map.addLayer({ id:'layer-prospect', type:'circle', source:'src-prospect', layout:{visibility:'visible'}, paint:{ 'circle-color':['get','color'], 'circle-opacity':0.45, 'circle-blur':0.35, 'circle-radius':30 } });
+  map.addLayer({ id:'layer-points', type:'circle', source:'src-points', layout:{visibility:'none'}, paint:{ 'circle-color':'#eceee8', 'circle-radius':4, 'circle-stroke-width':1, 'circle-stroke-color':'#0c1a20' } });
+}
+
+function initGisMap(){
+  if(glMap || typeof maplibregl === 'undefined') return;
+
+  glMap = new maplibregl.Map({
+    container:'glMap',
+    style: mapStyleDoc('streets', false),
+    center: GIS_CENTER,
+    zoom: GIS_ZOOM,
+    pitch: 0,
+    bearing: 0,
+    attributionControl:{ compact:true }
+  });
+
+  glMap.addControl(new maplibregl.NavigationControl({ showCompass:true, showZoom:true, visualizePitch:true }), 'top-right');
+  glMap.addControl(new maplibregl.ScaleControl({ maxWidth:90, unit:'metric' }), 'bottom-left');
+
+  glMap.on('load', ()=>{
+    addOverlaySources(glMap);
+    const ldg = document.getElementById('glLoading');
+    if(ldg) ldg.style.opacity = '0';
+    setTimeout(()=>{ if(ldg) ldg.style.display='none'; }, 320);
+  });
+
+  glMap.on('mousemove', (e)=>{
+    document.getElementById('hudCenter').textContent = e.lngLat.lat.toFixed(3)+'°N, '+e.lngLat.lng.toFixed(3)+'°E';
+  });
+  glMap.on('move', ()=>{
+    document.getElementById('hudZoom').textContent = glMap.getZoom().toFixed(1);
+    document.getElementById('hudPitch').textContent = Math.round(glMap.getPitch())+'°';
+    syncMiniMap();
+  });
+
+  // Mini overview map
+  glMiniMap = new maplibregl.Map({
+    container:'glMiniMap',
+    style: mapStyleDoc('streets', false),
+    center: GIS_CENTER,
+    zoom: Math.max(GIS_ZOOM-3.2, 1),
+    interactive:false,
+    attributionControl:false
+  });
+  glMiniMap.on('load', ()=>{
+    glMiniMap.addSource('mm-bbox', { type:'geojson', data: bboxPolygon(glMap.getBounds()) });
+    glMiniMap.addLayer({ id:'mm-bbox-fill', type:'fill', source:'mm-bbox', paint:{ 'fill-color':'#c1793f', 'fill-opacity':0.12 } });
+    glMiniMap.addLayer({ id:'mm-bbox-line', type:'line', source:'mm-bbox', paint:{ 'line-color':'#c1793f', 'line-width':1.5 } });
+    glMiniBoxSrcReady = true;
+    syncMiniMap();
+  });
+}
+
+function bboxPolygon(bounds){
+  const w=bounds.getWest(), e=bounds.getEast(), n=bounds.getNorth(), s=bounds.getSouth();
+  return { type:'Feature', geometry:{ type:'Polygon', coordinates:[[[w,n],[e,n],[e,s],[w,s],[w,n]]] } };
+}
+function syncMiniMap(){
+  if(!glMiniMap || !glMap) return;
+  glMiniMap.jumpTo({ center: glMap.getCenter() });
+  if(glMiniBoxSrcReady){
+    const src = glMiniMap.getSource('mm-bbox');
+    if(src) src.setData(bboxPolygon(glMap.getBounds()));
+  }
+}
+
+function setBasemap(key, btn){
+  glCurrentBasemap = key;
+  document.querySelectorAll('#view-gis .basemap-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(!glMap) return;
+  const bm = basemapStyles[key];
+  const src = glMap.getSource('basemap');
+  if(src && src.setTiles){ src.setTiles(bm.tiles); }
+  if(glMiniMap){
+    const msrc = glMiniMap.getSource('basemap');
+    if(msrc && msrc.setTiles) msrc.setTiles(bm.tiles);
+  }
+}
+
+function setBasemapOpacity(v){
+  document.getElementById('basemapOpacityVal').textContent = v+'%';
+  if(glMap && glMap.getLayer('basemap')) glMap.setPaintProperty('basemap', 'raster-opacity', v/100);
+}
+
+function toggleLayer(layerId, checkbox){
+  if(!glMap || !glMap.getLayer(layerId)) return;
+  glMap.setLayoutProperty(layerId, 'visibility', checkbox.checked ? 'visible' : 'none');
+}
+function setLayerOpacity(layerId, v){
+  if(!glMap || !glMap.getLayer(layerId)) return;
+  const frac = v/100;
+  const type = glMap.getLayer(layerId).type;
+  if(type === 'line') glMap.setPaintProperty(layerId, 'line-opacity', frac);
+  else if(type === 'circle') glMap.setPaintProperty(layerId, 'circle-opacity', frac*0.8);
+  else if(type === 'fill') glMap.setPaintProperty(layerId, 'fill-opacity', frac);
+}
+
+function setMapDimension(mode){
+  glIs3D = (mode === '3d');
+  document.getElementById('dim2dBtn').classList.toggle('active', !glIs3D);
+  document.getElementById('dim3dBtn').classList.toggle('active', glIs3D);
+  if(!glMap) return;
+
+  if(glIs3D){
+    if(!glMap.getSource('terrain-dem')){
+      glMap.addSource('terrain-dem', { type:'raster-dem', tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize:256, encoding:'terrarium', maxzoom:15 });
+    }
+    glMap.setTerrain({ source:'terrain-dem', exaggeration:1.6 });
+    glMap.easeTo({ pitch:58, bearing:-18, duration:800 });
+  } else {
+    glMap.setTerrain(null);
+    glMap.easeTo({ pitch:0, bearing:0, duration:800 });
+  }
+}
+
+function resetMapView(){
+  if(!glMap) return;
+  glMap.easeTo({ center:GIS_CENTER, zoom:GIS_ZOOM, pitch: glIs3D?58:0, bearing: glIs3D?-18:0, duration:600 });
+}
+
+function glQueryMode(){ wfToastSafe('Click a layer feature to inspect its attributes. (Query mode is illustrative in this prototype.)'); }
+function glMeasureMode(){ wfToastSafe('Measure tool: click two or more points on the map to measure distance. (Illustrative in this prototype.)'); }
+function wfToastSafe(msg){ if(typeof wfToast === 'function') wfToast(msg); else alert(msg); }
+
+// initialize once GIS view is first shown (container must be visible for MapLibre to size correctly)
+let gisMapInitialized = false;
+
+/* ============================================================
+   3D SUBSURFACE VIEWER (Three.js)
+   ============================================================ */
+let v3dInitialized = false;
+let v3dScene, v3dCamera, v3dRenderer, v3dControls, v3dContainer;
+const V3D_UNIT_M = 25; // world units -> metres, for readouts
+let v3dGroups = {};
+let v3dMode = 'standard';
+let v3dLayerState = { strata:true, fault:true, fold:true, shear:false, intrusion:true, dyke:true, contacts:false, terrain:true, contours:false, mine:false, geophysics:false };
+let v3dExploded = false;
+let v3dExplodable = [];
+let v3dStrataLayers = [];
+let v3dClippableMats = [];
+let v3dPickables = [];
+let v3dBoreholeMeshes = [];
+let v3dLabelEls = [];
+let v3dBlockMeshes = [];
+let v3dVoxelMeshes = [];
+let v3dTerrainMesh, v3dTerrainMat;
+let v3dClipEnabled = false, v3dFenceEnabled = false;
+let v3dClipPlaneX = new THREE.Plane(new THREE.Vector3(-1,0,0), 0);
+let v3dClipPlaneZ = new THREE.Plane(new THREE.Vector3(0,0,-1), 0);
+let v3dRaycaster = new THREE.Raycaster();
+let v3dMouseNDC = new THREE.Vector2();
+let v3dInteractionMode = 'none';
+let v3dMeasurePoints = [];
+let v3dNotes = [];
+let v3dNoteIdSeq = 1;
+let v3dSectionPts = [];
+let v3dTimelineTimer = null;
+
+const v3dBoreholeData = [
+  { id:'SGH-B-0142', x:1, z:-1, az:0, dip:88, depth:8.2, year:2024, ore:'Cu–Fe sulphide', recovery:96,
+    litho:[{from:0,to:1.4,color:0x5a4632,name:'Overburden'},{from:1.4,to:3.2,color:0x8c5a30,name:'Sandstone'},{from:3.2,to:5.0,color:0x3f7d78,name:'Shale'},{from:5.0,to:8.2,color:0xc1793f,name:'BIF'}],
+    assays:[{from:5.4,to:6.6,grade:'1.82% Cu'}] },
+  { id:'SGH-B-0156', x:-3, z:2, az:45, dip:65, depth:7.4, year:2022, ore:'Ni–Cu–PGE', recovery:91,
+    litho:[{from:0,to:1.2,color:0x5a4632,name:'Overburden'},{from:1.2,to:3.6,color:0x8c5a30,name:'Sandstone'},{from:3.6,to:7.4,color:0x2a3f48,name:'Basement Gneiss'}],
+    assays:[{from:4.0,to:5.1,grade:'0.64% Ni'}] },
+  { id:'SGH-B-0171', x:4, z:3, az:200, dip:70, depth:6.6, year:2025, ore:'REE–Carbonatite', recovery:89,
+    litho:[{from:0,to:1.6,color:0x5a4632,name:'Overburden'},{from:1.6,to:4.0,color:0x3f7d78,name:'Shale'},{from:4.0,to:6.6,color:0xc1793f,name:'BIF'}],
+    assays:[{from:2.2,to:3.0,grade:'1.9% TREO'}] },
+  { id:'SGH-B-0089', x:-6, z:-5, az:90, dip:80, depth:5.6, year:2019, ore:'Au (orogenic)', recovery:94,
+    litho:[{from:0,to:1.0,color:0x5a4632,name:'Overburden'},{from:1.0,to:5.6,color:0x2a3f48,name:'Basement Gneiss'}],
+    assays:[] },
+  { id:'SGH-B-0203', x:2, z:5, az:310, dip:55, depth:7.8, year:2026, ore:'Cu–Fe sulphide', recovery:97,
+    litho:[{from:0,to:1.4,color:0x5a4632,name:'Overburden'},{from:1.4,to:3.4,color:0x8c5a30,name:'Sandstone'},{from:3.4,to:5.2,color:0x3f7d78,name:'Shale'},{from:5.2,to:7.8,color:0xc1793f,name:'BIF'}],
+    assays:[{from:5.6,to:6.9,grade:'2.1% Cu'}] },
+  { id:'SGH-B-0118', x:-1, z:-6, az:150, dip:90, depth:6.2, year:2021, ore:'Fe (BIF-hosted)', recovery:92,
+    litho:[{from:0,to:1.2,color:0x5a4632,name:'Overburden'},{from:1.2,to:3.4,color:0x3f7d78,name:'Shale'},{from:3.4,to:6.2,color:0xc1793f,name:'BIF'}],
+    assays:[{from:3.6,to:4.4,grade:'58% Fe'}] }
+];
+
+function initV3D(){
+  if(v3dRenderer || typeof THREE === 'undefined') return;
+  v3dContainer = document.getElementById('v3dCanvas');
+  const rect = v3dContainer.getBoundingClientRect();
+
+  v3dScene = new THREE.Scene();
+  v3dScene.background = new THREE.Color(0x0c1a20);
+  v3dScene.fog = new THREE.FogExp2(0x0c1a20, 0.02);
+
+  v3dCamera = new THREE.PerspectiveCamera(45, rect.width/Math.max(rect.height,1), 0.1, 500);
+  v3dCamera.position.set(16,12,18);
+
+  v3dRenderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true });
+  v3dRenderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  v3dRenderer.setSize(rect.width, rect.height);
+  v3dRenderer.localClippingEnabled = true;
+  v3dContainer.appendChild(v3dRenderer.domElement);
+
+  v3dControls = new THREE.OrbitControls(v3dCamera, v3dRenderer.domElement);
+  v3dControls.target.set(0,-2,0);
+  v3dControls.enableDamping = true;
+  v3dControls.dampingFactor = 0.08;
+  v3dControls.minDistance = 4;
+  v3dControls.maxDistance = 60;
+  v3dControls.maxPolarAngle = Math.PI/2.05;
+  v3dControls.update();
+
+  v3dScene.add(new THREE.HemisphereLight(0x9fc8c4, 0x0c1a20, 0.9));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.7); dirLight.position.set(10,20,8); v3dScene.add(dirLight);
+  const dirLight2 = new THREE.DirectionalLight(0x4fa8a3, 0.25); dirLight2.position.set(-10,8,-10); v3dScene.add(dirLight2);
+
+  ['strata','fault','fold','shear','intrusion','dyke','contacts','terrain','contours','mine','geophysics','boreholes','blockModel','voxelModel','measure','notes'].forEach(k=>{
+    v3dGroups[k] = new THREE.Group();
+    v3dScene.add(v3dGroups[k]);
+  });
+
+  v3dBuildStrata();
+  v3dBuildFault();
+  v3dBuildFold();
+  v3dBuildShear();
+  v3dBuildIntrusion();
+  v3dBuildDykes();
+  v3dBuildTerrain();
+  v3dBuildMine();
+  v3dBuildBoreholes();
+  v3dBuildBlockModel();
+  v3dBuildVoxelModel();
+  v3dApplyInitialVisibility();
+
+  v3dRenderBoreholeList();
+  v3dRenderAiList();
+  v3dRenderSnapshotList();
+  v3dRenderNotesList();
+  v3dRenderRose();
+  v3dRenderStereo();
+  v3dUpdateModelReadout();
+
+  v3dRenderer.domElement.addEventListener('click', v3dOnCanvasClick);
+  v3dRenderer.domElement.addEventListener('mousemove', v3dOnCanvasMove);
+  window.addEventListener('resize', v3dOnResize);
+
+  const ldg = document.getElementById('v3dLoading');
+  setTimeout(()=>{ if(ldg){ ldg.style.opacity='0'; setTimeout(()=>{ ldg.style.display='none'; }, 300); } }, 450);
+
+  v3dAnimate();
+}
+
+function v3dBuildStrata(){
+  const layers = [
+    { name:'Laterite / Overburden', color:0x5a4632, yTop:-0.2, thick:1.4 },
+    { name:'Sandstone', color:0x8c5a30, yTop:-1.6, thick:1.8 },
+    { name:'Shale', color:0x3f7d78, yTop:-3.4, thick:1.6 },
+    { name:'Banded Iron Formation', color:0xc1793f, yTop:-5.0, thick:2.0 },
+    { name:'Basement Gneiss', color:0x2a3f48, yTop:-7.0, thick:2.6 }
+  ];
+  v3dStrataLayers = layers;
+  layers.forEach((l,i)=>{
+    const geo = new THREE.BoxGeometry(19, l.thick, 19);
+    const mat = new THREE.MeshStandardMaterial({ color:l.color, roughness:0.85, metalness:0.05, transparent:true, opacity:1 });
+    v3dClippableMats.push(mat);
+    const mesh = new THREE.Mesh(geo, mat);
+    const baseY = l.yTop - l.thick/2;
+    mesh.position.set(0, baseY, 0);
+    mesh.userData = { baseY, index:i, kind:'strata', name:l.name };
+    v3dGroups.strata.add(mesh);
+    v3dExplodable.push(mesh);
+    v3dPickables.push(mesh);
+
+    const eLine = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color:0x4fa8a3, transparent:true, opacity:0.7 }));
+    eLine.position.copy(mesh.position);
+    v3dGroups.contacts.add(eLine);
+  });
+}
+
+function v3dBuildFault(){
+  const specs = [ { yTop:-3.4, thick:1.6, color:0x356f6a }, { yTop:-5.0, thick:2.0, color:0xa8642f } ];
+  specs.forEach(s=>{
+    const geo = new THREE.BoxGeometry(9.5, s.thick, 19);
+    const mat = new THREE.MeshStandardMaterial({ color:s.color, roughness:0.85, transparent:true, opacity:0.95 });
+    v3dClippableMats.push(mat);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(7.2, s.yTop - s.thick/2 - 1.1, 0);
+    v3dGroups.fault.add(mesh);
+    v3dPickables.push(mesh);
+  });
+  const planeMat = new THREE.MeshBasicMaterial({ color:0xe0a458, transparent:true, opacity:0.18, side:THREE.DoubleSide });
+  const planeMesh = new THREE.Mesh(new THREE.PlaneGeometry(19,10), planeMat);
+  planeMesh.rotation.y = Math.PI/2; planeMesh.rotation.z = 0.15;
+  planeMesh.position.set(2.5,-5,0);
+  v3dGroups.fault.add(planeMesh);
+}
+
+function v3dBuildFold(){
+  const geo = new THREE.PlaneGeometry(8,8,24,24);
+  const pos = geo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const lx = pos.getX(i), lz = pos.getY(i);
+    const wy = 0.55*Math.sin(lx*0.8)*Math.cos(lz*0.5);
+    pos.setXYZ(i, lx, wy, lz);
+  }
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ color:0x8577a1, roughness:0.8, transparent:true, opacity:0.9, side:THREE.DoubleSide });
+  v3dClippableMats.push(mat);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(-5.5,-2.6,-0.5);
+  v3dGroups.fold.add(mesh);
+  v3dPickables.push(mesh);
+}
+
+function v3dBuildShear(){
+  const mat = new THREE.MeshStandardMaterial({ color:0x6d838a, roughness:0.6, transparent:true, opacity:0.35 });
+  v3dClippableMats.push(mat);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.1,9,15), mat);
+  mesh.rotation.z = 0.42;
+  mesh.position.set(1.5,-4.6,0);
+  v3dGroups.shear.add(mesh);
+  v3dPickables.push(mesh);
+}
+
+function v3dBuildIntrusion(){
+  const mat = new THREE.MeshStandardMaterial({ color:0xc1793f, roughness:0.5, metalness:0.15, transparent:true, opacity:1 });
+  v3dClippableMats.push(mat);
+  const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7,1), mat);
+  mesh.scale.set(1,1.25,0.85);
+  mesh.position.set(2.6,-5.6,-1.8);
+  v3dGroups.intrusion.add(mesh);
+  v3dPickables.push(mesh);
+}
+
+function v3dBuildDykes(){
+  const specs = [ {x:-2,z:4,rot:0.3}, {x:4.5,z:-3,rot:-0.5}, {x:-6.5,z:-3.5,rot:0.9}, {x:6,z:5,rot:-1.1} ];
+  specs.forEach(s=>{
+    const mat = new THREE.MeshStandardMaterial({ color:0xe0a458, roughness:0.7, transparent:true, opacity:0.9 });
+    v3dClippableMats.push(mat);
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.35,8.5,5.5), mat);
+    mesh.rotation.y = s.rot;
+    mesh.position.set(s.x,-4.4,s.z);
+    v3dGroups.dyke.add(mesh);
+    v3dPickables.push(mesh);
+  });
+}
+
+function v3dBuildTerrain(){
+  const geo = new THREE.PlaneGeometry(22,22,44,44);
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count*3);
+  const c1 = new THREE.Color(0x2f4a3a), c2 = new THREE.Color(0x8a9a5b), c3 = new THREE.Color(0xc7b788);
+  for(let i=0;i<pos.count;i++){
+    const lx = pos.getX(i), lz = pos.getY(i);
+    const wy = 0.85*Math.sin(lx*0.35)*Math.cos(lz*0.3) + 0.35*Math.sin(lx*0.9+lz*0.45);
+    pos.setXYZ(i, lx, wy+0.25, lz);
+    const t = THREE.MathUtils.clamp((wy+1.2)/2.4, 0, 1);
+    const col = t<0.5 ? c1.clone().lerp(c2, t*2) : c2.clone().lerp(c3, (t-0.5)*2);
+    colors[i*3]=col.r; colors[i*3+1]=col.g; colors[i*3+2]=col.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:1, metalness:0, transparent:true, opacity:1 });
+  const mesh = new THREE.Mesh(geo, mat);
+  v3dGroups.terrain.add(mesh);
+  v3dTerrainMesh = mesh; v3dTerrainMat = mat;
+  v3dPickables.push(mesh);
+
+  const wire = new THREE.LineSegments(new THREE.WireframeGeometry(geo), new THREE.LineBasicMaterial({ color:0x4fa8a3, transparent:true, opacity:0.5 }));
+  v3dGroups.contours.add(wire);
+}
+
+function v3dBuildMine(){
+  const tubeMat = new THREE.MeshStandardMaterial({ color:0x8a97a0, roughness:0.6, transparent:true, opacity:1 });
+  const curve = new THREE.CatmullRomCurve3([ new THREE.Vector3(-7,-2.2,-6), new THREE.Vector3(-4,-2.6,-4.5), new THREE.Vector3(-1,-3,-2.5), new THREE.Vector3(2,-3.4,-0.5), new THREE.Vector3(4.5,-3.6,1.5) ]);
+  const tunnel = new THREE.Mesh(new THREE.TubeGeometry(curve,40,0.32,8,false), tubeMat);
+  v3dGroups.mine.add(tunnel); v3dPickables.push(tunnel);
+
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,7,12), new THREE.MeshStandardMaterial({ color:0x6d838a, roughness:0.55, transparent:true, opacity:1 }));
+  shaft.position.set(-7,-3.7,-6);
+  v3dGroups.mine.add(shaft); v3dPickables.push(shaft);
+
+  const declineCurve = new THREE.CatmullRomCurve3([ new THREE.Vector3(-8.5,0.2,-8), new THREE.Vector3(-7.3,-1.4,-7.2), new THREE.Vector3(-6,-3,-6.4), new THREE.Vector3(-4.6,-4.6,-5.6) ]);
+  const decline = new THREE.Mesh(new THREE.TubeGeometry(declineCurve,30,0.3,8,false), tubeMat.clone());
+  v3dGroups.mine.add(decline); v3dPickables.push(decline);
+
+  const stopeMat = new THREE.MeshStandardMaterial({ color:0xe0a458, roughness:0.6, transparent:true, opacity:0.55 });
+  [[2.4,-5.4,-1.6],[3.2,-6.1,-2.4]].forEach(p=>{
+    const stope = new THREE.Mesh(new THREE.BoxGeometry(1.3,1.6,1.3), stopeMat);
+    stope.position.set(p[0],p[1],p[2]);
+    v3dGroups.mine.add(stope); v3dPickables.push(stope);
+  });
+
+  const oreVoid = new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,3.6,8), new THREE.MeshStandardMaterial({ color:0x9fa9ad, roughness:0.5 }));
+  oreVoid.position.set(3.4,-4.3,-2.1);
+  v3dGroups.mine.add(oreVoid);
+}
+
+function v3dDirVector(az, dip){
+  const azR = az*Math.PI/180, dipR = dip*Math.PI/180;
+  const horiz = Math.cos(dipR);
+  return new THREE.Vector3(Math.sin(azR)*horiz, -Math.sin(dipR), -Math.cos(azR)*horiz).normalize();
+}
+
+function v3dBuildBoreholes(){
+  v3dBoreholeMeshes = [];
+  v3dBoreholeData.forEach((bh,idx)=>{
+    const dir = v3dDirVector(bh.az, bh.dip);
+    const collar = new THREE.Vector3(bh.x, 0.28, bh.z);
+    const holeGroup = new THREE.Group();
+
+    bh.litho.forEach(seg=>{
+      const p1 = collar.clone().addScaledVector(dir, seg.from);
+      const p2 = collar.clone().addScaledVector(dir, seg.to);
+      const len = p1.distanceTo(p2);
+      const mid = p1.clone().add(p2).multiplyScalar(0.5);
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,len,8), new THREE.MeshStandardMaterial({ color:seg.color, roughness:0.6 }));
+      mesh.position.copy(mid);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
+      holeGroup.add(mesh);
+      v3dPickables.push(mesh);
+    });
+
+    bh.assays.forEach(a=>{
+      const mid = collar.clone().addScaledVector(dir, (a.from+a.to)/2);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.22,0.045,6,14), new THREE.MeshStandardMaterial({ color:0xe0a458, emissive:0x2a1a05 }));
+      ring.position.copy(mid);
+      ring.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), dir);
+      holeGroup.add(ring);
+    });
+
+    const collarMarker = new THREE.Mesh(new THREE.ConeGeometry(0.18,0.4,6), new THREE.MeshStandardMaterial({ color:0xeceee8 }));
+    collarMarker.position.copy(collar).add(new THREE.Vector3(0,0.2,0));
+    holeGroup.add(collarMarker);
+
+    const perp = new THREE.Vector3(-dir.z,0,dir.x).normalize();
+    const geoPts = [];
+    for(let t=0; t<=bh.depth; t+=0.3){
+      const base = collar.clone().addScaledVector(dir,t);
+      const wig = Math.sin(t*3+idx)*0.35;
+      geoPts.push(base.addScaledVector(perp, 0.5+wig*0.3));
+    }
+    v3dGroups.geophysics.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(geoPts), new THREE.LineBasicMaterial({ color:0xe0a458, transparent:true, opacity:0.85 })));
+
+    holeGroup.userData = { bh, idx, drilledYear:bh.year };
+    v3dGroups.boreholes.add(holeGroup);
+    v3dBoreholeMeshes.push(holeGroup);
+
+    const label = document.createElement('div');
+    label.className = 'v3d-label';
+    label.textContent = bh.id;
+    label.onclick = ()=>v3dSelectBorehole(idx);
+    document.getElementById('v3dLabels').appendChild(label);
+    v3dLabelEls.push({ el:label, point: collar.clone().add(new THREE.Vector3(0,0.5,0)), forceHidden:false });
+  });
+}
+
+function v3dBuildBlockModel(){
+  const nx=6, ny=5, nz=6;
+  const sizeX=19/nx, sizeZ=19/nz, sizeY=1.5;
+  const geo = new THREE.BoxGeometry(sizeX*0.82, sizeY*0.82, sizeZ*0.82);
+  v3dBlockMeshes = [];
+  for(let ix=0; ix<nx; ix++){
+    for(let iz=0; iz<nz; iz++){
+      for(let iy=0; iy<ny; iy++){
+        const x = -9.5+sizeX*(ix+0.5), z = -9.5+sizeZ*(iz+0.5), y = -1-sizeY*(iy+0.5);
+        const dx=x-2.6, dz=z+1.8, dy=(-y-5.6);
+        const distSq = (dx*dx)/30 + (dz*dz)/30 + (dy*dy)/6;
+        let grade = 0.15 + 0.85*Math.exp(-distSq) + 0.05*Math.sin(ix*1.3+iz*0.7);
+        grade = Math.max(0, Math.min(1, grade));
+        const color = grade>=0.62 ? 0x5f9e79 : grade>=0.4 ? 0x4fa8a3 : 0xe0a458;
+        const cls = grade>=0.62 ? 'Measured' : grade>=0.4 ? 'Indicated' : 'Inferred';
+        const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness:0.6, transparent:true, opacity:0.92 }));
+        mesh.position.set(x,y,z);
+        mesh.userData = { grade, cls };
+        v3dGroups.blockModel.add(mesh);
+        v3dBlockMeshes.push(mesh);
+        v3dPickables.push(mesh);
+      }
+    }
+  }
+}
+
+function v3dVoxelRamp(t){
+  const cols = [ new THREE.Color(0x1c2f38), new THREE.Color(0x4fa8a3), new THREE.Color(0xe0a458), new THREE.Color(0xc1793f) ];
+  const seg = Math.min(2, Math.floor(t*3));
+  const localT = t*3 - seg;
+  return cols[seg].clone().lerp(cols[seg+1], localT);
+}
+
+function v3dBuildVoxelModel(){
+  const nx=8, ny=5, nz=8;
+  const sizeX=19/nx, sizeZ=19/nz, sizeY=1.5;
+  const geo = new THREE.BoxGeometry(sizeX*0.7, sizeY*0.7, sizeZ*0.7);
+  v3dVoxelMeshes = [];
+  for(let ix=0; ix<nx; ix++){
+    for(let iz=0; iz<nz; iz++){
+      for(let iy=0; iy<ny; iy++){
+        const x = -9.5+sizeX*(ix+0.5), z = -9.5+sizeZ*(iz+0.5), y = -1-sizeY*(iy+0.5);
+        const depthFrac = (iy+0.5)/ny;
+        const dxI=x-2.6, dzI=z+1.8;
+        const grade = Math.max(0, Math.min(1, 0.15+0.85*Math.exp(-((dxI*dxI)/30+(dzI*dzI)/30)) ));
+        const geochem = Math.max(0, Math.min(1, 0.2+0.7*Math.exp(-(((x+4)*(x+4))/22+((z-3)*(z-3))/22)) ));
+        const density = 0.3+0.6*depthFrac;
+        const porosity = 0.75-0.55*depthFrac;
+        const magsus = Math.max(0, Math.min(1, 0.2+0.75*Math.exp(-((dxI*dxI)/20+(dzI*dzI)/20)) ));
+        const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color:0x4fa8a3, roughness:0.6, transparent:true, opacity:0.85 }));
+        mesh.position.set(x,y,z);
+        mesh.userData = { grade, geochem, density, porosity, magsus };
+        v3dGroups.voxelModel.add(mesh);
+        v3dVoxelMeshes.push(mesh);
+        v3dPickables.push(mesh);
+      }
+    }
+  }
+  v3dApplyVoxelColors('grade');
+}
+function v3dApplyVoxelColors(attr){
+  v3dVoxelMeshes.forEach(m=>{
+    const v = m.userData[attr] !== undefined ? m.userData[attr] : m.userData.grade;
+    m.material.color.copy(v3dVoxelRamp(v));
+  });
+}
+function v3dSetVoxelAttr(attr){ v3dApplyVoxelColors(attr); }
+
+function v3dApplyInitialVisibility(){
+  ['strata','fault','fold','shear','intrusion','dyke','contacts'].forEach(k=>{ v3dGroups[k].visible = (v3dMode==='standard') && v3dLayerState[k]; });
+  ['terrain','contours','mine','geophysics'].forEach(k=>{ v3dGroups[k].visible = v3dLayerState[k]; });
+  v3dGroups.blockModel.visible = false;
+  v3dGroups.voxelModel.visible = false;
+  v3dGroups.boreholes.visible = true;
+  v3dUpdateLegend();
+}
+
+function v3dToggleGroup(key, checkbox){
+  v3dLayerState[key] = checkbox.checked;
+  if(['strata','fault','fold','shear','intrusion','dyke','contacts'].includes(key)){
+    v3dGroups[key].visible = (v3dMode==='standard') && checkbox.checked;
+  } else {
+    v3dGroups[key].visible = checkbox.checked;
+  }
+}
+function v3dGroupOpacity(key, val){
+  const frac = val/100;
+  v3dGroups[key].traverse(o=>{ if(o.material){ o.material.transparent = true; o.material.opacity = frac; } });
+}
+
+function v3dSetMode(mode, btn){
+  v3dMode = mode;
+  document.querySelectorAll('#view-viewer3d .basemap-switcher .basemap-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  ['strata','fault','fold','shear','intrusion','dyke','contacts'].forEach(k=>{ v3dGroups[k].visible = (mode==='standard') && v3dLayerState[k]; });
+  v3dGroups.blockModel.visible = (mode==='block');
+  v3dGroups.voxelModel.visible = (mode==='voxel');
+  v3dUpdateLegend();
+  if(mode==='block'){
+    const slider = document.getElementById('v3dCutoffSlider');
+    if(slider) v3dSetCutoff(slider.value);
+  } else {
+    v3dUpdateModelReadout();
+  }
+}
+
+function v3dUpdateLegend(){
+  const el = document.getElementById('v3dLegend');
+  if(!el) return;
+  if(v3dMode==='standard'){
+    el.innerHTML = v3dStrataLayers.map(l=>`<div class="row"><span class="sw" style="background:#${l.color.toString(16).padStart(6,'0')}"></span>${l.name}</div>`).join('');
+  } else if(v3dMode==='block'){
+    el.innerHTML = `<div class="row"><span class="sw" style="background:#5f9e79"></span>Measured</div><div class="row"><span class="sw" style="background:#4fa8a3"></span>Indicated</div><div class="row"><span class="sw" style="background:#e0a458"></span>Inferred</div>`;
+  } else {
+    el.innerHTML = `<div class="row"><span class="sw" style="background:#1c2f38"></span>Low</div><div class="row"><span class="sw" style="background:#4fa8a3"></span>Med</div><div class="row"><span class="sw" style="background:#e0a458"></span>High</div><div class="row"><span class="sw" style="background:#c1793f"></span>Peak</div>`;
+  }
+}
+
+function v3dSetCutoff(val){
+  const cutoff = val/100;
+  document.getElementById('v3dCutoffVal').textContent = cutoff.toFixed(2)+'% Cu-eq';
+  let above=0;
+  v3dBlockMeshes.forEach(m=>{ const show = m.userData.grade >= cutoff; m.visible = show; if(show) above++; });
+  v3dUpdateModelReadout(above);
+}
+function v3dUpdateModelReadout(aboveCount){
+  const el = document.getElementById('v3dModelReadout');
+  if(!el) return;
+  const above = aboveCount!==undefined ? aboveCount : v3dBlockMeshes.filter(m=>m.visible).length;
+  el.textContent = 'Volume: 4.62 Mm³ · Tonnage: 12.4 Mt (est.) · Blocks above cut-off: '+above+' / '+v3dBlockMeshes.length;
+}
+
+function v3dSetOverlay(type){
+  if(!v3dTerrainMat) return;
+  v3dTerrainMat.map = (type==='none') ? null : v3dMakeOverlayTexture(type);
+  v3dTerrainMat.needsUpdate = true;
+}
+function v3dMakeOverlayTexture(type){
+  const c = document.createElement('canvas'); c.width=256; c.height=256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#0c1a20'; ctx.fillRect(0,0,256,256);
+  const spots = type==='magnetic' ? [[90,150,'#c1793f'],[180,90,'#4fa8a3']] :
+                type==='gravity'  ? [[130,120,'#5f9e79'],[70,60,'#4fa8a3']] :
+                [[100,180,'#e0a458'],[180,60,'#c1793f'],[60,90,'#5f9e79']];
+  spots.forEach(s=>{
+    const g = ctx.createRadialGradient(s[0],s[1],4,s[0],s[1],90);
+    g.addColorStop(0,s[2]); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,256,256);
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function v3dToggleClip(checked){ v3dClipEnabled = checked; v3dApplyClipping(); }
+function v3dSetClip(val){
+  document.getElementById('v3dClipVal').textContent = parseFloat(val).toFixed(1);
+  v3dClipPlaneX.constant = parseFloat(val);
+  v3dApplyClipping();
+}
+function v3dToggleFence(checked){ v3dFenceEnabled = checked; v3dApplyClipping(); }
+function v3dApplyClipping(){
+  const planes = [];
+  if(v3dClipEnabled) planes.push(v3dClipPlaneX);
+  if(v3dFenceEnabled) planes.push(v3dClipPlaneZ);
+  v3dClippableMats.forEach(m=>{ m.clippingPlanes = planes; });
+  v3dBlockMeshes.forEach(m=>{ m.material.clippingPlanes = planes; });
+  v3dVoxelMeshes.forEach(m=>{ m.material.clippingPlanes = planes; });
+}
+function v3dResetSection(){
+  document.getElementById('v3dClipEnable').checked = false;
+  document.getElementById('v3dFenceEnable').checked = false;
+  document.getElementById('v3dClipSlider').value = 0;
+  document.getElementById('v3dClipVal').textContent = '0.0';
+  v3dClipEnabled = false; v3dFenceEnabled = false;
+  v3dClipPlaneX.set(new THREE.Vector3(-1,0,0), 0);
+  v3dApplyClipping();
+}
+function v3dDrawSectionLine(){
+  v3dInteractionMode = 'sectionline';
+  v3dSectionPts = [];
+  wfToastSafe('Click two points on the model to define a custom section line.');
+}
+
+function v3dSetTransparency(val){
+  document.getElementById('v3dTransVal').textContent = val+'%';
+  const frac = val/100;
+  v3dClippableMats.forEach(m=>{ m.transparent = true; m.opacity = frac; });
+}
+
+function v3dGetIntersect(evt){
+  const rect = v3dRenderer.domElement.getBoundingClientRect();
+  v3dMouseNDC.x = ((evt.clientX-rect.left)/rect.width)*2-1;
+  v3dMouseNDC.y = -((evt.clientY-rect.top)/rect.height)*2+1;
+  v3dRaycaster.setFromCamera(v3dMouseNDC, v3dCamera);
+  const visiblePickables = v3dPickables.filter(o=>{ let v=o; while(v){ if(v.visible===false) return false; v=v.parent; } return true; });
+  const hits = v3dRaycaster.intersectObjects(visiblePickables, false);
+  return hits.length ? hits[0] : null;
+}
+function v3dOnCanvasMove(evt){
+  const hit = v3dGetIntersect(evt);
+  const el = document.getElementById('v3dDepth');
+  if(!el) return;
+  el.textContent = hit ? Math.max(0,-hit.point.y*V3D_UNIT_M).toFixed(0)+' m' : '—';
+}
+function v3dOnCanvasClick(evt){
+  const hit = v3dGetIntersect(evt);
+  if(!hit) return;
+  if(v3dInteractionMode==='measure') v3dAddMeasurePoint(hit.point);
+  else if(v3dInteractionMode==='note') v3dAddNote(hit.point);
+  else if(v3dInteractionMode==='sectionline'){
+    v3dSectionPts.push(hit.point.clone());
+    if(v3dSectionPts.length===2){
+      const [p1,p2] = v3dSectionPts;
+      const dir = new THREE.Vector3().subVectors(p2,p1).setY(0).normalize();
+      const normal = new THREE.Vector3(-dir.z,0,dir.x);
+      v3dClipPlaneX.normal.copy(normal);
+      v3dClipPlaneX.constant = -normal.dot(p1);
+      document.getElementById('v3dClipEnable').checked = true;
+      v3dClipEnabled = true;
+      v3dApplyClipping();
+      v3dInteractionMode = 'none';
+      wfToastSafe('Custom section line applied.');
+    }
+  }
+}
+
+function v3dToggleMeasure(){
+  const btn = document.getElementById('v3dMeasureBtn');
+  if(v3dInteractionMode==='measure'){ v3dInteractionMode='none'; btn.style.borderColor='var(--stroke)'; return; }
+  v3dInteractionMode = 'measure';
+  v3dMeasurePoints = [];
+  v3dGroups.measure.clear();
+  btn.style.borderColor = 'var(--copper)';
+}
+function v3dAddMeasurePoint(pt){
+  v3dMeasurePoints.push(pt.clone());
+  const marker = new THREE.Mesh(new THREE.SphereGeometry(0.14,10,10), new THREE.MeshBasicMaterial({ color:0xeceee8 }));
+  marker.position.copy(pt);
+  v3dGroups.measure.add(marker);
+  if(v3dMeasurePoints.length===2){
+    const [p1,p2] = v3dMeasurePoints;
+    v3dGroups.measure.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1,p2]), new THREE.LineBasicMaterial({ color:0xeceee8 })));
+    const dist = p1.distanceTo(p2)*V3D_UNIT_M;
+    const elev = (p2.y-p1.y)*V3D_UNIT_M;
+    const horiz = Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.z-p1.z,2))*V3D_UNIT_M;
+    const az = ((Math.atan2(p2.x-p1.x, -(p2.z-p1.z))*180/Math.PI)+360)%360;
+    const dip = Math.atan2(-(p2.y-p1.y), Math.sqrt(Math.pow(p2.x-p1.x,2)+Math.pow(p2.z-p1.z,2)))*180/Math.PI;
+    const strike = (az+90)%360;
+    document.getElementById('v3dStructReadout').innerHTML = 'Distance: '+dist.toFixed(1)+' m<br>Horizontal: '+horiz.toFixed(1)+' m · Elevation Δ: '+elev.toFixed(1)+' m<br>Azimuth: '+az.toFixed(0)+'° · Dip: '+Math.abs(dip).toFixed(0)+'° · Strike: '+strike.toFixed(0)+'°';
+    document.getElementById('v3dStatus').innerHTML = 'Last measurement: '+dist.toFixed(0)+' m';
+    v3dMeasurePoints = [];
+  }
+}
+
+function v3dToggleNoteMode(){
+  const btn = document.getElementById('v3dNoteBtn');
+  if(v3dInteractionMode==='note'){ v3dInteractionMode='none'; btn.style.borderColor='var(--stroke)'; return; }
+  v3dInteractionMode = 'note';
+  btn.style.borderColor = 'var(--amber)';
+}
+function v3dAddNote(pt){
+  const text = window.prompt('Add note at this point:');
+  document.getElementById('v3dNoteBtn').style.borderColor='var(--stroke)';
+  v3dInteractionMode = 'none';
+  if(!text) return;
+  const id = v3dNoteIdSeq++;
+  const marker = new THREE.Mesh(new THREE.SphereGeometry(0.16,10,10), new THREE.MeshStandardMaterial({ color:0xe0a458, emissive:0x3a2408 }));
+  marker.position.copy(pt);
+  v3dGroups.notes.add(marker);
+  const label = document.createElement('div');
+  label.className = 'v3d-label pin';
+  label.textContent = '📍'+id;
+  label.title = text;
+  document.getElementById('v3dLabels').appendChild(label);
+  const labelEntry = { el:label, point: pt.clone().add(new THREE.Vector3(0,0.25,0)), forceHidden:false };
+  v3dLabelEls.push(labelEntry);
+  v3dNotes.push({ id, point: pt.clone(), text, ts:new Date().toLocaleString(), resolved:false, marker, label, labelEntry });
+  v3dRenderNotesList();
+}
+function v3dRenderNotesList(){
+  const el = document.getElementById('v3dNotesList');
+  if(!el) return;
+  if(v3dNotes.length===0){ el.innerHTML = '<p class="v3d-note-small">No annotations yet.</p>'; return; }
+  el.innerHTML = v3dNotes.map(n=>`
+    <div class="v3d-note-item">
+      <div style="${n.resolved?'text-decoration:line-through; opacity:.6;':''}">${n.text}</div>
+      <div class="meta"><span>${n.ts}${n.resolved?' · resolved':''}</span><span><button onclick="v3dResolveNote(${n.id})">${n.resolved?'Reopen':'Resolve'}</button> · <button onclick="v3dDeleteNote(${n.id})">Delete</button></span></div>
+    </div>`).join('');
+}
+function v3dResolveNote(id){ const n = v3dNotes.find(x=>x.id===id); if(!n) return; n.resolved=!n.resolved; v3dRenderNotesList(); }
+function v3dDeleteNote(id){
+  const idx = v3dNotes.findIndex(x=>x.id===id); if(idx<0) return;
+  const n = v3dNotes[idx];
+  v3dGroups.notes.remove(n.marker);
+  const li = v3dLabelEls.indexOf(n.labelEntry);
+  if(li>=0){ n.label.remove(); v3dLabelEls.splice(li,1); }
+  v3dNotes.splice(idx,1);
+  v3dRenderNotesList();
+}
+
+function v3dRenderSnapshotList(){
+  const el = document.getElementById('v3dSnapshotList');
+  if(!el) return;
+  const snaps = [
+    { ver:'v1.3', date:'21 Jul 2026', user:'A. Verma', note:'Added fold structure interpretation' },
+    { ver:'v1.2', date:'14 Jul 2026', user:'R. Iyer', note:'Updated fault block geometry' },
+    { ver:'v1.0', date:'02 Jul 2026', user:'S. Nair', note:'Initial 3D model import' }
+  ];
+  el.innerHTML = snaps.map(s=>`
+    <div class="v3d-snap-row">
+      <div><b>${s.ver}</b> · ${s.date}<br><span style="color:var(--text-faint);">${s.user} — ${s.note}</span></div>
+      <button class="btn" onclick="wfToastSafe('Snapshot ${s.ver} restored (prototype).')">Restore</button>
+    </div>`).join('');
+}
+
+function v3dShareView(){
+  const p = v3dCamera.position, t = v3dControls.target;
+  const str = location.href.split('#')[0] + '#v3d=' + p.x.toFixed(1)+','+p.y.toFixed(1)+','+p.z.toFixed(1)+';'+t.x.toFixed(1)+','+t.y.toFixed(1)+','+t.z.toFixed(1)+';mode='+v3dMode;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(str).then(()=>wfToastSafe('Shareable view link copied to clipboard.')).catch(()=>wfToastSafe('Link: '+str));
+  } else { wfToastSafe('Shareable link: '+str); }
+}
+
+function v3dRenderAiList(){
+  const el = document.getElementById('v3dAiList');
+  if(!el) return;
+  const items = [
+    { ic:'⚡', label:'Automatic fault detection', val:'3 candidate faults · avg. confidence 78%' },
+    { ic:'🪨', label:'Lithology classification', val:'5 classes resolved · 84% avg. confidence' },
+    { ic:'🎯', label:'Ore body prediction', val:'Est. volume 4.62 Mm³ (Cu–Fe sulphide)' },
+    { ic:'🗺', label:'Mineral prospectivity mapping', val:'Linked to MPA module · AUC 0.85' },
+    { ic:'🧩', label:'Geological boundary detection', val:'12 contacts flagged for review' },
+    { ic:'📍', label:'Drill target recommendations', val:'2 targets — DT-1 (82.9°E, 20.33°N), DT-2 (81.7°E, 21.47°N)' },
+    { ic:'📊', label:'Resource estimation support', val:'Indicated 6.1 Mt @ 0.52% Cu-eq' }
+  ];
+  el.innerHTML = items.map(i=>`<div class="v3d-ai-item"><div class="ic">${i.ic}</div><div><b>${i.label}</b><br>${i.val}</div></div>`).join('');
+}
+
+function v3dRunSimulation(){
+  const sel = document.getElementById('v3dSimSelect').value;
+  const out = document.getElementById('v3dSimReadout');
+  out.textContent = 'Running simulation…';
+  const results = {
+    groundwater:'Steady-state drawdown cone extends ~340 m from pit centre; max drawdown 22 m.',
+    orebody:'Projected ore body growth: +6.4% volume over 5-year exploration horizon.',
+    stress:'Peak induced stress 38 MPa near shear zone contact — within design tolerance.',
+    stability:'Factor of safety 1.42 (pit slope, dry season) — meets 1.3 design minimum.',
+    subsidence:'Predicted max surface subsidence 0.8 m over active stope footprint.',
+    mineplan:'Recommended sequencing: Zone B → Zone A → Zone C, 3-phase extraction plan.'
+  };
+  setTimeout(()=>{ out.textContent = (results[sel]||'—') + ' (Illustrative simulation output — prototype only.)'; }, 650);
+}
+
+function v3dRenderBoreholeList(){
+  const el = document.getElementById('v3dBoreholeList');
+  if(!el) return;
+  el.innerHTML = v3dBoreholeData.map((bh,i)=>`
+    <div class="v3d-bh-row" style="cursor:pointer;" onclick="v3dSelectBorehole(${i})">
+      <span class="dot" style="background:#${bh.litho[0].color.toString(16).padStart(6,'0')}"></span>
+      <span class="id">${bh.id}</span>
+      <span class="depth">${(bh.depth*V3D_UNIT_M).toFixed(0)} m</span>
+    </div>`).join('');
+}
+function v3dSelectBorehole(i){
+  const bh = v3dBoreholeData[i];
+  const det = document.getElementById('v3dBhDetail');
+  det.classList.add('active');
+  det.innerHTML = `
+    <div class="meta-row"><span class="k">Ore body</span><span class="v">${bh.ore}</span></div>
+    <div class="meta-row"><span class="k">Azimuth / Dip</span><span class="v">${bh.az}° / ${bh.dip}°</span></div>
+    <div class="meta-row"><span class="k">Total depth</span><span class="v">${(bh.depth*V3D_UNIT_M).toFixed(0)} m</span></div>
+    <div class="meta-row"><span class="k">Core recovery</span><span class="v">${bh.recovery}%</span></div>
+    <div class="meta-row"><span class="k">Drilled</span><span class="v">${bh.year}</span></div>
+    <div class="meta-row"><span class="k">Assay intervals</span><span class="v">${bh.assays.length ? bh.assays.map(a=>a.grade).join(', ') : 'None flagged'}</span></div>`;
+  if(v3dControls && v3dCamera){
+    v3dControls.target.set(bh.x,-1,bh.z);
+    v3dCamera.position.set(bh.x+6,4,bh.z+6);
+    v3dControls.update();
+  }
+}
+
+function v3dSetTimeline(year){
+  year = parseInt(year);
+  document.getElementById('v3dTimelineVal').textContent = year;
+  let count=0;
+  v3dBoreholeMeshes.forEach((g,i)=>{
+    const visible = g.userData.drilledYear <= year;
+    g.visible = visible;
+    if(v3dLabelEls[i]) v3dLabelEls[i].forceHidden = !visible;
+    if(visible) count++;
+  });
+  document.getElementById('v3dTimelineReadout').textContent = count+' of '+v3dBoreholeMeshes.length+' boreholes drilled by '+year;
+}
+function v3dPlayTimeline(){
+  const slider = document.getElementById('v3dTimelineSlider');
+  let y = 2018;
+  slider.value = y; v3dSetTimeline(y);
+  clearInterval(v3dTimelineTimer);
+  v3dTimelineTimer = setInterval(()=>{
+    y++;
+    if(y>2026){ clearInterval(v3dTimelineTimer); return; }
+    slider.value = y; v3dSetTimeline(y);
+  }, 550);
+}
+
+function v3dRenderRose(){
+  const svg = document.getElementById('v3dRose');
+  if(!svg) return;
+  const orientations = [40,55,120,128,205,210,300,315,80];
+  const bins = new Array(18).fill(0);
+  orientations.forEach(o=>{ bins[Math.floor((o%360)/20)]++; bins[Math.floor(((o+180)%360)/20)]++; });
+  const max = Math.max(...bins,1);
+  const cx=75, cy=75, R=60;
+  let paths='';
+  bins.forEach((v,i)=>{
+    const a0=(i*20-90)*Math.PI/180, a1=((i+1)*20-90)*Math.PI/180;
+    const r=(v/max)*R;
+    const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0), x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+    paths += `<path d="M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r.toFixed(1)},${r.toFixed(1)} 0 0,1 ${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="#4fa8a3" opacity="0.55" stroke="#0c1a20" stroke-width="0.5"/>`;
+  });
+  svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#2a3f48"/><circle cx="${cx}" cy="${cy}" r="${R*0.66}" fill="none" stroke="#2a3f48"/><circle cx="${cx}" cy="${cy}" r="${R*0.33}" fill="none" stroke="#2a3f48"/>${paths}<text x="${cx}" y="12" text-anchor="middle" font-size="9" fill="#6d838a" font-family="IBM Plex Mono">N</text>`;
+}
+function v3dRenderStereo(){
+  const svg = document.getElementById('v3dStereo');
+  if(!svg) return;
+  const planes = [ {strike:40,dip:60},{strike:120,dip:75},{strike:205,dip:50},{strike:300,dip:40} ];
+  const cx=75, cy=75, R=60;
+  let dots='';
+  planes.forEach(p=>{
+    const dipDir=(p.strike+90)%360, plunge=90-p.dip, r=R*(1-plunge/90), ang=(dipDir-90)*Math.PI/180;
+    const x=cx+r*Math.cos(ang), y=cy+r*Math.sin(ang);
+    dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#e0a458" stroke="#0c1a20" stroke-width="0.6"/>`;
+  });
+  svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#2a3f48"/><line x1="${cx-R}" y1="${cy}" x2="${cx+R}" y2="${cy}" stroke="#2a3f48"/><line x1="${cx}" y1="${cy-R}" x2="${cx}" y2="${cy+R}" stroke="#2a3f48"/>${dots}<text x="${cx}" y="12" text-anchor="middle" font-size="9" fill="#6d838a" font-family="IBM Plex Mono">N</text>`;
+}
+
+function v3dTab(name, btn){
+  document.querySelectorAll('.v3d-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.v3d-tabpanel').forEach(p=>p.classList.remove('active'));
+  const panel = document.querySelector('.v3d-tabpanel[data-tabpanel="'+name+'"]');
+  if(panel) panel.classList.add('active');
+}
+
+function v3dSetCamMode(mode){
+  document.getElementById('camOrbitBtn').classList.toggle('active', mode==='orbit');
+  document.getElementById('camWalkBtn').classList.toggle('active', mode==='walk');
+  if(mode==='walk'){
+    v3dCamera.position.set(0,0.9,10);
+    v3dControls.target.set(0,0.5,0);
+    v3dControls.minDistance = 0.5;
+    v3dControls.maxDistance = 8;
+  } else {
+    v3dControls.minDistance = 4;
+    v3dControls.maxDistance = 60;
+    v3dResetView();
+  }
+  v3dControls.update();
+}
+function v3dFlyThrough(){
+  document.getElementById('camOrbitBtn').classList.remove('active');
+  document.getElementById('camWalkBtn').classList.remove('active');
+  v3dControls.enabled = false;
+  const waypoints = [ new THREE.Vector3(16,12,18), new THREE.Vector3(-2,10,20), new THREE.Vector3(-14,6,4), new THREE.Vector3(-4,4,-14), new THREE.Vector3(12,5,-8), new THREE.Vector3(16,12,18) ];
+  const target = new THREE.Vector3(0,-3,0);
+  let seg=0; const segTime=1400; let segStart=performance.now();
+  function step(now){
+    const t = Math.min(1,(now-segStart)/segTime);
+    v3dCamera.position.lerpVectors(waypoints[seg], waypoints[seg+1], t);
+    v3dControls.target.copy(target);
+    if(t>=1){
+      seg++; segStart=now;
+      if(seg>=waypoints.length-1){ v3dControls.enabled=true; v3dSetCamMode('orbit'); return; }
+    }
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+function v3dResetView(){
+  v3dCamera.position.set(16,12,18);
+  v3dControls.target.set(0,-2,0);
+  v3dControls.update();
+}
+
+function v3dToggleExplode(){
+  v3dExploded = !v3dExploded;
+  document.getElementById('v3dExplodeBtn').style.borderColor = v3dExploded ? 'var(--copper)' : 'var(--stroke)';
+}
+
+function v3dExportPNG(){
+  v3dRenderer.render(v3dScene, v3dCamera);
+  const url = v3dRenderer.domElement.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url; a.download = 'dpiic-cross-section-'+Date.now()+'.png';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function v3dOnResize(){
+  if(!v3dRenderer || !v3dContainer) return;
+  const rect = v3dContainer.getBoundingClientRect();
+  if(rect.width===0 || rect.height===0) return;
+  v3dCamera.aspect = rect.width/rect.height;
+  v3dCamera.updateProjectionMatrix();
+  v3dRenderer.setSize(rect.width, rect.height);
+}
+
+function v3dAnimate(){
+  requestAnimationFrame(v3dAnimate);
+  if(v3dControls) v3dControls.update();
+  v3dExplodable.forEach(m=>{
+    const target = m.userData.baseY + (v3dExploded ? m.userData.index*0.9 : 0);
+    m.position.y += (target - m.position.y)*0.08;
+  });
+  const rect = v3dRenderer.domElement.getBoundingClientRect();
+  v3dLabelEls.forEach(l=>{
+    const p = l.point.clone().project(v3dCamera);
+    if(p.z>1 || l.forceHidden){ l.el.style.display='none'; return; }
+    l.el.style.display='';
+    l.el.style.left = ((p.x*0.5+0.5)*rect.width)+'px';
+    l.el.style.top = ((-(p.y*0.5)+0.5)*rect.height)+'px';
+  });
+  v3dRenderer.render(v3dScene, v3dCamera);
+}
+
+/* ============ WORKFLOW VIEW ============ */
+const wfColors = {
+  purple:'#8577a1', green:'#5f9e79', orange:'#e0a458', blue:'#3f7d78', teal:'#4fa8a3', red:'#b3564a'
+};
+const wfIcons = { acquisition:'⬆', ingestion:'🗄', validation:'🛡', cleaning:'🧑‍💻', standardization:'📚', integration:'🧩', repository:'🗄', processing:'⚙' };
+
+const wfStages = [
+  { num:1, key:'acquisition', name:'Data Acquisition', desc:'Collecting data from multiple sources via API, SFTP, Portal or Manual Upload.',
+    color:wfColors.purple, count:128, status:'New', statusColor:wfColors.purple,
+    metrics:[{k:'Sources',v:'12'},{k:'Datasets',v:'128'},{k:'Volume',v:'2.45 TB'}], lastLabel:'Last Received', lastVal:'Today, 10:30 AM', progress:null,
+    substeps:[ {t:'Connect to 12 registered data sources', done:true}, {t:'Authenticate SFTP &amp; API gateways', done:true}, {t:'Queue portal submissions for intake', done:false}, {t:'Verify manual upload batch integrity', done:false} ] },
+  { num:2, key:'ingestion', name:'Data Ingestion', desc:'Ingesting data into the system through automated pipelines.',
+    color:wfColors.green, count:112, status:'In Progress', statusColor:wfColors.orange,
+    metrics:[{k:'Processed',v:'112'},{k:'Pending',v:'16'},{k:'Success Rate',v:'92%'}], lastLabel:'Last Run', lastVal:'Today, 11:15 AM', progress:92, progColor:wfColors.orange,
+    substeps:[ {t:'Parse GeoTIFF, SHP and CSV payloads', done:true}, {t:'Load records into staging schema', done:true}, {t:'Reconcile source metadata tags', done:false} ] },
+  { num:3, key:'validation', name:'Validation', desc:'Validating data format, metadata, spatial references and completeness.',
+    color:wfColors.orange, count:98, status:'In Progress', statusColor:wfColors.orange,
+    metrics:[{k:'Validated',v:'82'},{k:'Failed',v:'16'},{k:'Success Rate',v:'84%'}], lastLabel:'Last Run', lastVal:'Today, 11:30 AM', progress:84, progColor:wfColors.orange,
+    substeps:[ {t:'Check spatial reference systems (CRS)', done:true}, {t:'Validate schema &amp; field completeness', done:true}, {t:'Flag 16 records failing validation', done:false} ] },
+  { num:4, key:'cleaning', name:'Cleaning', desc:'Removing duplicates, correcting errors and handling missing values.',
+    color:wfColors.blue, count:85, status:'In Progress', statusColor:wfColors.blue,
+    metrics:[{k:'Cleaned',v:'72'},{k:'Errors Fixed',v:'68'},{k:'Success Rate',v:'81%'}], lastLabel:'Last Run', lastVal:'Today, 12:00 PM', progress:81, progColor:wfColors.blue,
+    substeps:[ {t:'Remove duplicate dataset records', done:true}, {t:'Correct coordinate &amp; encoding errors', done:true}, {t:'Impute or flag missing field values', done:false} ] },
+  { num:5, key:'standardization', name:'Standardization', desc:'Converting data into standardized formats and controlled vocabularies.',
+    color:wfColors.green, count:72, status:'Completed', statusColor:wfColors.green,
+    metrics:[{k:'Standardized',v:'72'},{k:'Failed',v:'0'},{k:'Success Rate',v:'100%'}], lastLabel:'Last Run', lastVal:'Today, 12:20 PM', progress:100, progColor:wfColors.green,
+    substeps:[ {t:'Apply controlled vocabulary mapping', done:true}, {t:'Convert to standard CRS (EPSG:4326)', done:true}, {t:'Normalize units of measurement', done:true} ] },
+  { num:6, key:'integration', name:'Integration', desc:'Integrating multi-source datasets into unified geoscientific layers.',
+    color:wfColors.green, count:60, status:'Completed', statusColor:wfColors.green,
+    metrics:[{k:'Integrated',v:'60'},{k:'Layers Created',v:'152'},{k:'Success Rate',v:'100%'}], lastLabel:'Last Run', lastVal:'Today, 01:00 PM', progress:100, progColor:wfColors.green,
+    substeps:[ {t:'Merge multi-source geoscientific layers', done:true}, {t:'Build unified topology &amp; attribution', done:true}, {t:'Publish integrated layers to workspace', done:true} ] },
+  { num:7, key:'repository', name:'Central Repository', desc:'Storing integrated data in secure central repository.',
+    color:wfColors.green, count:56, status:'Stored', statusColor:wfColors.green,
+    metrics:[{k:'Datasets',v:'56'},{k:'Storage Used',v:'8.67 TB'},{k:'Availability',v:'99.9%'}], lastLabel:'Last Updated', lastVal:'Today, 01:15 PM', progress:99.9, progColor:wfColors.green,
+    substeps:[ {t:'Write datasets to secure central storage', done:true}, {t:'Index metadata into catalogue', done:true}, {t:'Run availability &amp; integrity checks', done:true} ] },
+  { num:8, key:'processing', name:'Data Processing', desc:'Running analytical models, AI/ML algorithms and generating outputs.',
+    color:wfColors.purple, count:45, status:'In Progress', statusColor:wfColors.purple,
+    metrics:[{k:'Jobs Run',v:'45'},{k:'Completed',v:'28'},{k:'Success Rate',v:'78%'}], lastLabel:'Last Run', lastVal:'Today, 01:45 PM', progress:78, progColor:wfColors.purple,
+    substeps:[ {t:'Run AI/ML prospectivity models', done:true}, {t:'Generate output raster products', done:false}, {t:'Queue remaining analytical jobs', done:false} ] }
+];
+
+const wfAlerts = [
+  { color:wfColors.red, icon:'!', text:'16 datasets failed validation', time:'Today, 11:30 AM' },
+  { color:wfColors.orange, icon:'⚠', text:'Low storage space in raw zone', time:'Today, 10:15 AM' },
+  { color:wfColors.green, icon:'✓', text:'Integration completed for Project X', time:'Today, 01:00 PM' }
+];
+
+const wfState = { selected:null, expanded:new Set(), search:'', filter:'All', running:false };
+
+function wfStatusPillStyle(hex){
+  return `background:${hex}1A; color:${hex};`;
+}
+
+function renderWfStrip(){
+  const strip = document.getElementById('wfStageStrip');
+  if(!strip) return;
+  strip.innerHTML = wfStages.map((s,i)=>`
+    ${i>0 ? '<div class="wf-stage-arrow">→</div>' : ''}
+    <div class="wf-stage-card${wfState.selected===i ? ' selected' : ''}" onclick="wfSelectStage(${i})">
+      <div class="wf-stage-icon" style="background:${s.color}">${wfIcons[s.key]}</div>
+      <div class="wf-stage-num">${s.num}</div>
+      <div class="wf-stage-name">${s.name}</div>
+      <div class="wf-stage-count">${s.count}</div>
+      <div class="wf-stage-status" style="color:${s.statusColor}">${s.status}</div>
+    </div>
+  `).join('');
+}
+
+function renderWfChips(){
+  const el = document.getElementById('wfChips');
+  if(!el) return;
+  const statuses = ['All','New','In Progress','Completed','Stored'];
+  el.innerHTML = statuses.map(st=>`<button class="wf-chip${wfState.filter===st ? ' active':''}" onclick="wfSetFilter('${st}')">${st}</button>`).join('');
+}
+
+function wfFilteredStages(){
+  const term = wfState.search.trim().toLowerCase();
+  return wfStages
+    .map((s,i)=>({ s, i }))
+    .filter(({s})=> wfState.filter==='All' || s.status===wfState.filter)
+    .filter(({s})=> !term || s.name.toLowerCase().includes(term) || s.desc.toLowerCase().includes(term));
+}
+
+function wfSetSearch(val){
+  wfState.search = val;
+  renderWfStageList();
+}
+
+function wfSetFilter(status){
+  wfState.filter = status;
+  renderWfChips();
+  renderWfStageList();
+  const legend = document.getElementById('wfLegend');
+  if(legend){
+    [...legend.children].forEach(row=>{
+      row.classList.toggle('active', row.dataset.label === status);
+    });
+  }
+}
+
+function renderWfStageList(){
+  const list = document.getElementById('wfStageList');
+  const countEl = document.getElementById('wfResultCount');
+  if(!list) return;
+  const filtered = wfFilteredStages();
+  if(countEl) countEl.textContent = `${filtered.length} of ${wfStages.length} stages`;
+  if(filtered.length===0){
+    list.innerHTML = `<div class="wf-empty">No stages match your search or filter.</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(({s,i}, pos)=>`
+    <div class="wf-stage-row${wfState.expanded.has(i) ? ' expanded':''}${wfState.selected===i ? ' highlight':''}" id="wfRow${i}">
+      <div class="wf-stage-rail">
+        <div class="wf-stage-badge" style="background:${s.color}">${s.num}</div>
+        ${pos < filtered.length-1 ? '<div class="wf-stage-rail-line"></div>' : ''}
+      </div>
+      <div class="wf-stage-icon-sm" style="background:${s.color}">${wfIcons[s.key]}</div>
+      <div class="wf-stage-info">
+        <h5>${s.name}</h5>
+        <p>${s.desc}</p>
+      </div>
+      <div class="wf-stage-badgepill" style="${wfStatusPillStyle(s.statusColor)}">${s.count} ${s.status}</div>
+      <div class="wf-stage-metrics">
+        ${s.metrics.map(m=>`
+          <div class="wf-metric">
+            <div class="k">${m.k}</div>
+            <div class="v">${m.v}</div>
+            ${m.k==='Success Rate' && s.progress!==null ? `<div class="bar wf-progress-live"><span style="width:${s.progress}%; background:${s.progColor}"></span></div>` : ''}
+          </div>`).join('')}
+        <div class="wf-metric">
+          <div class="k">${s.lastLabel}</div>
+          <div class="v" style="font-size:11.5px; font-weight:600;">${s.lastVal}</div>
+        </div>
+      </div>
+      <div class="wf-stage-actions">
+        <button class="wf-view-btn" onclick="wfOpenModal(${i})">🔍 View Details</button>
+        <button class="wf-caret" onclick="wfToggleExpand(${i})">⌄</button>
+      </div>
+      <div class="wf-expand-panel">
+        ${s.substeps.map((sub,si)=>`
+          <div class="wf-substep${sub.done ? ' done':''}">
+            <span class="wf-substep-check${sub.done ? ' done':''}" onclick="wfToggleSubstep(${i},${si})">✓</span>
+            <span class="lbl">${sub.t}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function wfSelectStage(idx){
+  wfState.selected = idx;
+  renderWfStrip();
+  renderWfStageList();
+  requestAnimationFrame(()=>{
+    const row = document.getElementById('wfRow'+idx);
+    if(row) row.scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+}
+
+function wfToggleExpand(idx){
+  if(wfState.expanded.has(idx)) wfState.expanded.delete(idx);
+  else wfState.expanded.add(idx);
+  renderWfStageList();
+}
+
+function wfToggleSubstep(idx, subIdx){
+  const sub = wfStages[idx].substeps[subIdx];
+  sub.done = !sub.done;
+  renderWfStageList();
+  if(document.getElementById('wfModalOverlay').classList.contains('active')) renderWfModalSubsteps(idx);
+}
+
+function renderWfDonut(){
+  const svg = document.getElementById('wfDonut');
+  const legend = document.getElementById('wfLegend');
+  if(!svg || !legend) return;
+  const data = [
+    { label:'New', val:128, color:wfColors.purple },
+    { label:'In Progress', val:340, color:wfColors.orange },
+    { label:'Completed', val:188, color:wfColors.green },
+    { label:'Stored', val:56, color:wfColors.teal }
+  ];
+  const total = data.reduce((a,d)=>a+d.val,0);
+  const cx=90, cy=90, r=68, stroke=24;
+  const circ = 2*Math.PI*r;
+  let offset = 0;
+  let paths = '';
+  data.forEach(d=>{
+    const frac = d.val/total;
+    const len = frac*circ;
+    paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="${stroke}"
+      stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset += len;
+  });
+  svg.innerHTML = `${paths}
+    <text x="${cx}" y="${cy-6}" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="24" font-weight="700" fill="#eceee8">${total}</text>
+    <text x="${cx}" y="${cy+14}" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#a9bcc0">Total Datasets</text>`;
+  legend.innerHTML = data.map(d=>`
+    <div class="wf-legend-row${wfState.filter===d.label ? ' active':''}" data-label="${d.label}" onclick="wfSetFilter('${d.label}')">
+      <span class="wf-legend-dot" style="background:${d.color}"></span>
+      <span class="wf-legend-label">${d.label}</span>
+      <span class="wf-legend-val">${d.val} (${Math.round(d.val/total*100)}%)</span>
+    </div>`).join('');
+}
+
+function renderWfAlerts(){
+  const el = document.getElementById('wfAlerts');
+  if(!el) return;
+  el.innerHTML = wfAlerts.map(a=>`
+    <div class="wf-alert-item" onclick="wfToast('${a.text.replace(/'/g,"\\'")} — ${a.time}')">
+      <div class="wf-alert-icon" style="background:${a.color}">${a.icon}</div>
+      <div>
+        <div class="wf-alert-text">${a.text}</div>
+        <div class="wf-alert-time">${a.time}</div>
+      </div>
+    </div>`).join('');
+}
+
+function wfToast(msg){
+  let t = document.getElementById('wfToastEl');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'wfToastEl';
+    t.style.cssText = 'position:fixed; bottom:24px; right:24px; background:var(--panel-2); border:1px solid var(--stroke); color:var(--text); padding:12px 18px; border-radius:var(--radius); font-size:13px; font-family:IBM Plex Sans,sans-serif; box-shadow:0 8px 24px rgba(0,0,0,0.4); z-index:999; opacity:0; transition:opacity .2s; max-width:300px;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(()=>{ t.style.opacity='0'; }, 2600);
+}
+
+function renderWfModalSubsteps(idx){
+  const s = wfStages[idx];
+  const el = document.getElementById('wfModalSubsteps');
+  el.innerHTML = s.substeps.map((sub,si)=>`
+    <div class="wf-substep${sub.done ? ' done':''}">
+      <span class="wf-substep-check${sub.done ? ' done':''}" onclick="wfToggleSubstep(${idx},${si})">✓</span>
+      <span class="lbl">${sub.t}</span>
+    </div>`).join('');
+}
+
+function wfOpenModal(idx){
+  const s = wfStages[idx];
+  document.getElementById('wfModalIcon').style.background = s.color;
+  document.getElementById('wfModalIcon').textContent = wfIcons[s.key];
+  document.getElementById('wfModalTitle').textContent = `${s.num}. ${s.name}`;
+  document.getElementById('wfModalDesc').textContent = s.desc;
+  document.getElementById('wfModalMetrics').innerHTML = s.metrics.map(m=>`
+    <div class="wf-modal-metric"><div class="k">${m.k}</div><div class="v">${m.v}</div></div>`).join('');
+  renderWfModalSubsteps(idx);
+  document.getElementById('wfModalLastLabel').textContent = `${s.lastLabel}: ${s.lastVal}  ·  Status: ${s.status}`;
+  document.getElementById('wfModalOverlay').classList.add('active');
+}
+
+function wfCloseModal(){
+  document.getElementById('wfModalOverlay').classList.remove('active');
+}
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape') wfCloseModal();
+});
+
+function wfSimulateRun(){
+  if(wfState.running) return;
+  const targets = wfStages.filter(s=>s.status==='In Progress');
+  if(targets.length===0){ wfToast('No stages currently in progress to simulate.'); return; }
+  wfState.running = true;
+  const btn = document.getElementById('wfSimulateBtn');
+  if(btn){ btn.textContent = '⏳ Simulating…'; btn.disabled = true; btn.style.opacity = '0.7'; }
+  wfToast(`Simulating pipeline run across ${targets.length} in-progress stage(s)…`);
+  let ticks = 0;
+  const timer = setInterval(()=>{
+    ticks++;
+    targets.forEach(s=>{
+      if(s.progress < 100){
+        s.progress = Math.min(100, Math.round(s.progress + (100 - s.progress) * 0.4));
+        s.metrics = s.metrics.map(m=> m.k==='Success Rate' ? {...m, v: s.progress+'%'} : m);
+      }
+    });
+    renderWfStageList();
+    if(ticks>=5){
+      clearInterval(timer);
+      targets.forEach(s=>{
+        s.progress = 100;
+        s.status = 'Completed';
+        s.statusColor = wfColors.green;
+        s.progColor = wfColors.green;
+        s.lastVal = 'Just now';
+        s.metrics = s.metrics.map(m=> m.k==='Success Rate' ? {...m, v:'100%'} : m);
+      });
+      wfAlerts.unshift({ color:wfColors.green, icon:'✓', text:`Pipeline simulation completed for ${targets.length} stage(s)`, time:'Just now' });
+      renderWfStageList();
+      renderWfAlerts();
+      if(btn){ btn.textContent = '▶ Simulate Pipeline Run'; btn.disabled = false; btn.style.opacity = '1'; }
+      wfState.running = false;
+      wfToast('Simulation complete — stages marked Completed.');
+    }
+  }, 450);
+}
+
+renderWfStrip();
+renderWfChips();
+renderWfStageList();
+renderWfDonut();
+renderWfAlerts();
+</script>
+<script>
+window.DPIIC_CONFIG = { apiBase: '', autoLogin: { user: 'demo.admin@dpiic.gov.in', password: 'Dpiic@2026' } };
+</script>
+<script src="/static/dpiic-integration.js"></script>
+</body>
+</html>
