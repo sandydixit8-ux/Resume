@@ -77,7 +77,8 @@ echo "  Logs: journalctl -u resumeiq-backend -f"
 echo
 echo "NEXT STEPS:"
 echo "  1. Edit $BACKEND_DIR/.env and set SECRET_KEY, ADMIN_PASSWORD,"
-echo "     ANTHROPIC_API_KEY (and Stripe keys if going live)."
+echo "     and GROQ_API_KEY (free, from console.groq.com) or ANTHROPIC_API_KEY"
+echo "     (and Stripe keys if going live)."
 echo "  2. Set CORS_ORIGINS to your Netlify site URL, then:"
 echo "     sudo systemctl restart resumeiq-backend"
 echo

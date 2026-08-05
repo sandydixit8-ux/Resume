@@ -59,7 +59,7 @@ This installs the Python backend + Caddy (HTTPS) + systemd.
 sudo nano /var/www/resumeiq/backend/.env
 #  - SECRET_KEY        -> random long string
 #  - ADMIN_PASSWORD    -> your admin login
-#  - ANTHROPIC_API_KEY -> your key (if you have one)
+#  - GROQ_API_KEY      -> free key from https://console.groq.com (or ANTHROPIC_API_KEY)
 #  - CORS_ORIGINS      -> https://<your-site>.netlify.app   (fill in Part 2's URL)
 #  - DATABASE_URL      -> sqlite:////var/www/resumeiq/data/dpiic.db   (already set)
 #  - UPLOAD_DIR        -> /var/www/resumeiq/data/uploads              (already set)
