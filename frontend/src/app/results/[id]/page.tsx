@@ -34,6 +34,7 @@ import {
 import Link from "next/link"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import AIResumeTools from "@/components/ai-tools"
 
 function ScoreGauge({ value, label }: { value: number; label: string }) {
   const color =
@@ -287,13 +288,16 @@ export default function ResultsPage() {
             </Card>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-4 bg-muted/80 p-1 rounded-xl">
+              <TabsList className="grid grid-cols-5 bg-muted/80 p-1 rounded-xl">
                 <TabsTrigger value="ats" className="rounded-lg data-[state=active]:bg-gradient-brand data-[state=active]:text-white">ATS Details</TabsTrigger>
                 <TabsTrigger value="jd-match" className="rounded-lg data-[state=active]:bg-gradient-brand data-[state=active]:text-white">
                   JD Match {jdMatch ? <Badge className="ml-2 bg-white/20 text-white border-0">{jdMatch.match_score}%</Badge> : null}
                 </TabsTrigger>
                 <TabsTrigger value="rewrites" className="rounded-lg data-[state=active]:bg-gradient-brand data-[state=active]:text-white">
                   Rewrites {rewrites.length > 0 ? <Badge className="ml-2 bg-white/20 text-white border-0">{rewrites.length}</Badge> : null}
+                </TabsTrigger>
+                <TabsTrigger value="ai-tools" className="rounded-lg data-[state=active]:bg-gradient-brand data-[state=active]:text-white">
+                  <Sparkles className="h-3.5 w-3.5 inline mr-1" /> AI Tools
                 </TabsTrigger>
                 <TabsTrigger value="cover-letter" className="rounded-lg data-[state=active]:bg-gradient-brand data-[state=active]:text-white">Cover Letter</TabsTrigger>
               </TabsList>
@@ -533,6 +537,10 @@ export default function ResultsPage() {
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              <TabsContent value="ai-tools">
+                <AIResumeTools resumeId={resumeId} jdText={jdText} />
               </TabsContent>
 
               <TabsContent value="cover-letter" className="mt-6">

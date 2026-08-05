@@ -12,6 +12,9 @@ from app.api.interview import router as interview_router
 from app.api.admin import router as admin_router
 from app.api.payment import router as payment_router
 from app.api.contact import router as contact_router
+from app.api.ai import router as ai_router
+from app.api.countries import router as countries_router
+from app.api.export import router as export_router
 
 settings = get_settings()
 
@@ -58,6 +61,9 @@ app.include_router(interview_router, prefix="/api/v1/interview")
 app.include_router(admin_router)
 app.include_router(payment_router)
 app.include_router(contact_router)
+app.include_router(ai_router, prefix="/api/v1")
+app.include_router(countries_router, prefix="/api/v1")
+app.include_router(export_router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

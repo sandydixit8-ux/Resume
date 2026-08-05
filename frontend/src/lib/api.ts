@@ -197,3 +197,67 @@ export async function generateCoverLetter(params: {
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
+
+export async function getAIStatus() {
+  const res = await fetch(`${API_BASE}/api/v1/ai/status`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+async function aiPost(path: string, resumeId: number, extra: Record<string, unknown> = {}) {
+  const res = await fetch(`${API_BASE}${path}/${resumeId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(extra),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export function aiAchievements(resumeId: number, jdText?: string) {
+  return aiPost("/api/v1/ai/achievements", resumeId, { jd_text: jdText })
+}
+export function aiSummary(resumeId: number, jdText?: string) {
+  return aiPost("/api/v1/ai/summary", resumeId, { jd_text: jdText })
+}
+export function aiSkills(resumeId: number, jdText?: string) {
+  return aiPost("/api/v1/ai/skills", resumeId, { jd_text: jdText })
+}
+export function aiImprove(resumeId: number, jdText?: string) {
+  return aiPost("/api/v1/ai/improve", resumeId, { jd_text: jdText })
+}
+export function aiLinkedin(resumeId: number, jdText?: string) {
+  return aiPost("/api/v1/ai/linkedin", resumeId, { jd_text: jdText })
+}
+
+export async function getCountries() {
+  const res = await fetch(`${API_BASE}/api/v1/countries`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function getCountry(code: string) {
+  const res = await fetch(`${API_BASE}/api/v1/countries/${encodeURIComponent(code)}`)
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function exportResume(params: {
+  format: string
+  country?: string
+  template?: string
+  resume_id?: number
+  parsed_json?: Record<string, unknown>
+}) {
+  const res = await fetch(`${API_BASE}/api/v1/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  const blob = await res.blob()
+  const disposition = res.headers.get("content-disposition") || ""
+  const match = disposition.match(/filename="([^"]+)"/)
+  const filename = match ? match[1] : "resume"
+  return { blob, filename }
+}
