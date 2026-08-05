@@ -76,9 +76,11 @@ class TradingBot:
 
     # ------------------------------------------------------------------
     def run(self, cycles: Optional[int] = None, interval_seconds: float = 300.0,
-            dry_cycles: int = 0) -> None:
+            dry_cycles: int = 0, on_cycle=None, report_every: int = 60) -> None:
         """Main loop. ``cycles=None`` runs forever; ``dry_cycles`` warms the
-        data/indicators without trading (used at startup)."""
+        data/indicators without trading (used at startup). ``on_cycle``, when
+        given, is called with ``(store, settings)`` every ``report_every``
+        cycles so external processes can refresh reports while running."""
         coins = self.feed.available_coins() if not self.s.is_backtest() else self.s.watchlist
         log.info("Bot starting | mode=%s | coins=%s | trade_tf=%s | min_confidence=%.0f%%",
                  self.s.mode, coins, self.s.trade_timeframe, self.s.min_confidence * 100)
@@ -97,6 +99,11 @@ class TradingBot:
                                last_event_risk=self._last_event_risk)
             cycle += 1
             warm += 1
+            if on_cycle is not None and report_every and cycle % report_every == 0:
+                try:
+                    on_cycle(self.store, self.s)
+                except Exception:
+                    log.error("on_cycle hook failed:\n%s", traceback.format_exc())
             time.sleep(interval_seconds)
 
     # ------------------------------------------------------------------
