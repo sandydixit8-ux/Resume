@@ -12,7 +12,6 @@ import {
   Target, Loader2, Sparkles, CheckCircle2, XCircle, AlertTriangle, ArrowRight,
 } from "lucide-react"
 import { matchJD } from "@/lib/api"
-import Reveal from "@/components/reveal"
 
 export default function JDMatchPage() {
   const [resumeId, setResumeId] = useState("")
@@ -38,7 +37,7 @@ export default function JDMatchPage() {
       <Header />
       <main id="main-content" className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-4xl">
-          <Reveal className="text-center mb-8">
+          <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-sm font-medium text-emerald-300 mb-4">
               <Target className="h-3.5 w-3.5" />
               JD Matching
@@ -47,9 +46,8 @@ export default function JDMatchPage() {
             <p className="mt-3 text-muted-foreground text-lg max-w-2xl mx-auto">
               Compare your resume against any job description and get a detailed match score
             </p>
-          </Reveal>
+          </div>
 
-          <Reveal delay={1}>
           <Card className="border border-border/50 bg-transparent mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -103,7 +101,6 @@ export default function JDMatchPage() {
               </p>
             </CardContent>
           </Card>
-          </Reveal>
 
           {error && (
             <div className="mb-6 p-4 bg-red-950/30 border border-red-800/50 rounded-xl flex items-start gap-3">

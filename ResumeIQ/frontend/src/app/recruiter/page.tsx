@@ -7,7 +7,6 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { Users, Search, BarChart3, ArrowRight, Check } from "lucide-react"
 import Link from "next/link"
-import Reveal from "@/components/reveal"
 
 const features = [
   { icon: Search, title: "AI Candidate Ranking", desc: "Automatically rank candidates against job requirements" },
@@ -21,7 +20,7 @@ export default function RecruiterPage() {
       <Header />
       <main id="main-content" className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-4xl">
-          <Reveal className="text-center mb-8">
+          <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-sm font-medium text-emerald-300 mb-4">
               <Users className="h-3.5 w-3.5" />
               Recruiter Tools
@@ -30,25 +29,22 @@ export default function RecruiterPage() {
             <p className="mt-3 text-muted-foreground text-lg max-w-2xl mx-auto">
               Streamline your hiring process with AI-powered candidate analysis
             </p>
-          </Reveal>
+          </div>
 
           <div className="grid md:grid-cols-3 gap-6 mb-8">
             {features.map((f, i) => (
-              <Reveal key={i} delay={i as 0 | 1 | 2} className="h-full">
-              <Card className="border border-border/50 bg-transparent group h-full hover:border-emerald-500/30 hover:-translate-y-1 transition-all duration-500">
+              <Card key={i} className="border border-border/50 bg-transparent group hover:border-emerald-500/30 transition-all duration-500">
                 <CardHeader>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-3 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-3">
                     <f.icon className="h-5 w-5 text-emerald-400" />
                   </div>
                   <CardTitle className="text-base">{f.title}</CardTitle>
                   <CardDescription className="text-sm">{f.desc}</CardDescription>
                 </CardHeader>
               </Card>
-              </Reveal>
             ))}
           </div>
 
-          <Reveal variant="zoom">
           <Card className="border border-border/50 bg-transparent">
             <CardContent className="text-center py-16">
               <Users className="h-10 w-10 text-muted-foreground/40 mx-auto mb-4" />
@@ -66,7 +62,6 @@ export default function RecruiterPage() {
               </div>
             </CardContent>
           </Card>
-          </Reveal>
         </div>
       </main>
       <Footer />

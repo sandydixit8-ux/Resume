@@ -9,7 +9,6 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { Check, ChevronRight, Loader2, ExternalLink, AlertCircle, Sparkles } from "lucide-react"
 import { getPaymentConfig, createCheckoutSession, getSubscription, createPortalSession } from "@/lib/api"
-import Reveal from "@/components/reveal"
 
 const plans = [
   {
@@ -155,10 +154,10 @@ export default function PricingPage() {
       <main id="main-content" className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
-            <Reveal className="text-center mb-4">
+            <div className="text-center mb-4">
               <Badge className="px-4 py-1.5 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-300 border-emerald-500/30 text-sm font-normal">Pricing</Badge>
-            </Reveal>
-            <Reveal delay={1} className="text-center mb-16">
+            </div>
+            <div className="text-center mb-16">
               <h1 className="text-3xl md:text-5xl font-bold mb-4">Simple, transparent <span className="text-gradient">pricing</span></h1>
               <p className="text-muted-foreground text-lg max-w-xl mx-auto">
                 {stripeConfigured ? "Choose the plan that fits your needs. No hidden fees." : "No API keys needed — demo mode active. Plans work instantly."}
@@ -177,7 +176,7 @@ export default function PricingPage() {
                   ))}
                 </div>
               </div>
-            </Reveal>
+            </div>
 
             {!stripeConfigured && (
               <div className="max-w-md mx-auto mb-8 p-3 bg-emerald-950/20 border border-emerald-800/30 rounded-lg flex items-center gap-2 text-sm">
@@ -197,8 +196,7 @@ export default function PricingPage() {
               {displayPlans.map((p, i) => {
                 const isCurrent = isPro && p.name === "Pro"
                 return (
-                  <Reveal key={i} delay={i as 0 | 1 | 2} className="h-full">
-                  <Card className={`relative overflow-hidden border h-full ${p.highlighted ? "border-emerald-500/40 shadow-xl shadow-emerald-500/10 scale-105" : "border-border/50"} bg-transparent hover:border-emerald-500/30 transition-all duration-500`}>
+                  <Card key={i} className={`relative overflow-hidden border ${p.highlighted ? "border-emerald-500/40 shadow-xl shadow-emerald-500/10 scale-105" : "border-border/50"} bg-transparent hover:border-emerald-500/30 transition-all duration-500`}>
                     {p.highlighted && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-brand" />}
                     {p.highlighted && <div className="absolute -top-10 -right-10 w-20 h-20 bg-gradient-brand/20 rounded-full blur-2xl" />}
                     <CardHeader>
@@ -241,7 +239,6 @@ export default function PricingPage() {
                       )}
                     </CardContent>
                   </Card>
-                  </Reveal>
                 )
               })}
             </div>
@@ -253,7 +250,6 @@ export default function PricingPage() {
               </div>
             )}
 
-            <Reveal variant="zoom">
             <Card className="border border-border/50 bg-transparent">
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl">Feature Comparison</CardTitle>
@@ -284,7 +280,6 @@ export default function PricingPage() {
                 </div>
               </CardContent>
             </Card>
-            </Reveal>
           </div>
         </div>
       </main>

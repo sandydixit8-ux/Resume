@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { submitContact } from "@/lib/api"
-import Reveal from "@/components/reveal"
 
 const CONTACT_EMAIL = "ridhyanshtechinfra@gmail.com"
 const CONTACT_PHONE = "+91 88716 97922"
@@ -55,23 +54,22 @@ export default function ContactPage() {
     <main id="main-content" className="pt-24 pb-20 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/5 via-transparent to-emerald-950/5 pointer-events-none" />
       <div className="container mx-auto px-4 relative">
-        <Reveal className="text-center mb-4">
+        <div className="text-center mb-4">
           <Badge className="px-4 py-1.5 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-300 border-emerald-500/30 text-sm font-normal">
             Contact Us
           </Badge>
-        </Reveal>
-        <Reveal delay={1} className="text-center mb-12">
+        </div>
+        <div className="text-center mb-12">
           <h1 className="text-3xl md:text-5xl font-bold mb-4">
             Let&apos;s talk about <span className="text-gradient">growing with ResumeIQ</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Whether you&apos;re a hiring team, recruiter, or individual — tell us what you need and we&apos;ll get back to you.
           </p>
-        </Reveal>
+        </div>
 
         <div className="grid lg:grid-cols-5 gap-8 max-w-6xl mx-auto">
-          <Reveal variant="left" className="lg:col-span-2">
-          <Card className="border border-border/50 bg-transparent h-full">
+          <Card className="lg:col-span-2 border border-border/50 bg-transparent h-fit">
             <CardContent className="p-6 space-y-6">
               <div>
                 <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
@@ -115,10 +113,8 @@ export default function ContactPage() {
               </div>
             </CardContent>
           </Card>
-          </Reveal>
 
-          <Reveal variant="right" className="lg:col-span-3">
-          <Card className="border border-border/50 bg-transparent h-full">
+          <Card className="lg:col-span-3 border border-border/50 bg-transparent">
             <CardContent className="p-6 md:p-8">
               <h2 className="text-xl font-bold mb-1">Send us a message</h2>
               <p className="text-sm text-muted-foreground mb-6">Use this form for sales inquiries, team licenses, and demos.</p>
@@ -164,7 +160,6 @@ export default function ContactPage() {
               </form>
             </CardContent>
           </Card>
-          </Reveal>
         </div>
       </div>
     </main>

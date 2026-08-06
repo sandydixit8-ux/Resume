@@ -9,7 +9,6 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { FileText, Loader2, Sparkles, Copy, CheckCircle2, RefreshCw } from "lucide-react"
 import { generateCoverLetter } from "@/lib/api"
-import Reveal from "@/components/reveal"
 
 export default function CoverLetterPage() {
   const [resumeId, setResumeId] = useState("")
@@ -43,7 +42,7 @@ export default function CoverLetterPage() {
       <Header />
       <main id="main-content" className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-4xl">
-          <Reveal className="text-center mb-8">
+          <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-sm font-medium text-emerald-300 mb-4">
               <FileText className="h-3.5 w-3.5" />
               Cover Letter Generator
@@ -52,9 +51,8 @@ export default function CoverLetterPage() {
             <p className="mt-3 text-muted-foreground text-lg max-w-2xl mx-auto">
               Create personalized, ATS-friendly cover letters tailored to any role
             </p>
-          </Reveal>
+          </div>
 
-          <Reveal delay={1}>
           <Card className="border border-border/50 bg-transparent mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -93,7 +91,6 @@ export default function CoverLetterPage() {
               </Button>
             </CardContent>
           </Card>
-          </Reveal>
 
           {content && (
             <Card className="border border-border/50 bg-transparent overflow-hidden">
