@@ -102,10 +102,14 @@ class CoinDCXClient:
         payload, signature = self._sign(body)
         url = f"{self.base_url}{path}"
         headers = {
+            "Content-Type": "application/json",
             "X-AUTH-APIKEY": self.api_key,
             "X-AUTH-SIGNATURE": signature,
         }
-        r = self.session.get(url, headers=headers, timeout=self.timeout)
+        # CoinDCX signed GETs (e.g. futures wallet details) require the signed
+        # JSON body to be sent along with the request; the signature is
+        # validated against the received body, so omitting it yields 401.
+        r = self.session.get(url, data=payload, headers=headers, timeout=self.timeout)
         if r.status_code >= 400:
             raise CoinDCXError(f"GET {path} -> {r.status_code}: {r.text[:300]}")
         return r.json()

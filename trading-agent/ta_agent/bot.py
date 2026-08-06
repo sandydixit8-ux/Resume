@@ -70,6 +70,7 @@ class TradingBot:
         self._consecutive_errors = 0
         self._last_plans: list = []
         self._last_event_risk = None
+        self._equity_synced = False
         self.monitor = FailureMonitor(
             settings, store=self.store,
             alert_file=Path(settings.data_dir) / "monitor_alerts.json")
@@ -84,6 +85,7 @@ class TradingBot:
         coins = self.feed.available_coins() if not self.s.is_backtest() else self.s.watchlist
         log.info("Bot starting | mode=%s | coins=%s | trade_tf=%s | min_confidence=%.0f%%",
                  self.s.mode, coins, self.s.trade_timeframe, self.s.min_confidence * 100)
+        self._sync_equity()
         cycle = 0
         warm = 0
         while cycles is None or cycle < cycles:
@@ -107,6 +109,52 @@ class TradingBot:
             time.sleep(interval_seconds)
 
     # ------------------------------------------------------------------
+    def _sync_equity(self) -> None:
+        """Size from the REAL account balance in live mode, never the config
+        default. Zero/empty balance means no trades get sized. The peak is
+        initialised from the real balance on first sync so an underfunded
+        wallet does not produce a spurious drawdown vs the config default."""
+        if not self.s.is_live():
+            return
+        try:
+            eq = self.broker.get_balances().get("equity")
+        except Exception as exc:  # pragma: no cover
+            log.error("Could not sync live equity: %s", exc)
+            return
+        if eq is None:
+            return
+        eq = float(eq)
+        if not self._equity_synced:
+            self.risk.state.equity = eq
+            self.risk.state.peak_equity = eq
+            self._equity_synced = True
+            if eq <= 0:
+                log.warning("Live USDT equity is %.2f - no trades will be sized "
+                            "until the futures wallet is funded", eq)
+            else:
+                log.info("Live equity synced from broker: %.2f USDT", eq)
+            return
+        self.risk.state.equity = eq
+        self.risk.state.peak_equity = max(self.risk.state.peak_equity, eq)
+
+    def _verify_position_protection(self, coin: str, pair: str, qty: float,
+                                    stop_loss: float, take_profit: float) -> None:
+        """In live mode, confirm the exchange-side TP/SL exists after entry;
+        attach it if missing so an unprotected position is never left behind."""
+        if not self.s.is_live():
+            return
+        try:
+            pos = self.broker.get_position(pair)
+        except Exception as exc:  # pragma: no cover
+            log.error("Could not verify TP/SL for %s: %s", coin, exc)
+            return
+        if pos and pos.stop_loss and pos.take_profit:
+            return
+        res = self.broker.set_tpsl(pair, stop_loss, take_profit, qty)
+        if not res.get("ok"):
+            log.error("ATTENTION %s: TP/SL could not be attached - position is "
+                      "UNPROTECTED on the exchange: %s", coin, res.get("error"))
+
     def _cycle(self, coins: List[str], warmup: bool = False) -> None:
         frames = self.feed.get_frames(coins)
         if not frames:
@@ -239,6 +287,8 @@ class TradingBot:
                  plan.coin, plan.side.upper(), qty, entry_price, plan.stop_loss,
                  plan.take_profit, plan.confidence * 100, plan.rr)
         log.info(format_trade_report(plan))
+        self._verify_position_protection(plan.coin, plan.pair, qty,
+                                         plan.stop_loss, plan.take_profit)
 
     # ------------------------------------------------------------------
     def _manage_position(self, coin: str, tfs, event_risk) -> None:
@@ -266,7 +316,13 @@ class TradingBot:
                         reason: str, fraction: float = 1.0) -> None:
         qty = pos.qty * fraction
         order = self.broker.close_position(pos.pair, qty)
-        fill = order.avg_price if order and order.avg_price else price
+        if order is None:
+            # Exit failed at the broker (live) or no mark price (paper). The
+            # position still exists: do NOT record a fill, do NOT forget it.
+            log.error("CLOSE FAILED for %s %s - position kept, will retry next cycle",
+                      coin, pos.side)
+            return
+        fill = order.avg_price if order.avg_price else price
         pnl = (fill - pos.entry) * qty if pos.side == "long" else (pos.entry - fill) * qty
         fees = abs(fill) * qty * self.s.taker_fee()
         net = pnl - fees

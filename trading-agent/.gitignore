@@ -15,6 +15,7 @@ data/monitor_alerts.json
 data/backtest_equity.csv
 data/backtest_report.json
 data/paper_report.json
+data/live_report.json
 data/validation_report.json
 data/learning_report.json
 data/reports/

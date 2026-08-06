@@ -115,8 +115,11 @@ class FailureMonitor:
     def check_drawdown(self, state) -> List[dict]:
         if state is None:
             return []
+        if state.equity <= 0:
+            # Nothing at risk (e.g. unfunded live wallet) - drawdown is undefined.
+            return []
         limit = float(self.s.risk.get("monthly", 0.10))
-        peak = state.peak_equity if state.peak_equity else 1.0
+        peak = state.peak_equity if state.peak_equity else state.equity
         dd = (state.equity - peak) / peak if peak > 0 else 0.0
         if dd < -limit:
             return [self.alert("critical", "drawdown_limit",

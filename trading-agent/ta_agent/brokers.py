@@ -188,6 +188,8 @@ class LiveBroker(Broker):
             for w in wallets:
                 currency = w.get("currency_short_name") or w.get("currency")
                 out[currency] = float(w.get("balance", 0.0))
+            # Sizing equity for USDT-margined futures = free USDT wallet balance.
+            out["equity"] = out.get("USDT", 0.0)
             return out
         except CoinDCXError as exc:
             log.error("get_balances failed: %s", exc)
