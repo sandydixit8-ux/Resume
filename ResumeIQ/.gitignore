@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Backend
+backend/.env
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+backend/uploads/
+backend/.pytest_cache/
+
+# Frontend (also covered by frontend/.gitignore)
+frontend/node_modules/
+frontend/.next/
+
+# dpiic-backend
+dpiic-backend/*.db
+dpiic-backend/*.db-shm
+dpiic-backend/*.db-wal
+dpiic-backend/.pytest_cache/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+
+# Generated publish folder (assembled by make-publish.ps1)
+publish/

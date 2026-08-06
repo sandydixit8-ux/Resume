@@ -6,7 +6,7 @@
 # /api/v1/* to that URL automatically.
 
 [build]
-  base = "frontend"
+  base = "ResumeIQ/frontend"
   command = "npm ci && npm run build"
   publish = ".next"
 
