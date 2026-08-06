@@ -24,43 +24,43 @@ export default function Header() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass">
+    <header className="fixed top-0 left-0 right-0 z-50 glass animate-slide-down">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="bg-gradient-brand p-1.5 rounded-lg glow-brand transition-transform duration-300 group-hover:scale-105">
+          <div className="bg-gradient-brand p-1.5 rounded-lg glow-brand transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
             <FileText className="h-5 w-5 text-white" />
           </div>
           <span className="font-bold text-xl text-gradient">ResumeIQ</span>
         </Link>
 
         <nav className="hidden lg:flex items-center gap-6">
-          <Link href="/analyze" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+          <Link href="/analyze" className="nav-link text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
             Analyzer
           </Link>
-          <Link href="/jd-match" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+          <Link href="/jd-match" className="nav-link text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
             JD Matching
           </Link>
-          <Link href="/cover-letter" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+          <Link href="/cover-letter" className="nav-link text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
             Cover Letter
           </Link>
-          <Link href="/builder" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+          <Link href="/builder" className="nav-link text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
             Builder
           </Link>
-          <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+          <Link href="/pricing" className="nav-link text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
             Pricing
           </Link>
-          <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+          <Link href="/contact" className="nav-link text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
             Contact
           </Link>
         </nav>
 
         <div className="hidden lg:flex items-center gap-2">
-          <Button asChild size="sm" className="bg-gradient-cyan hover:opacity-90 text-white glow-cyan">
+          <Button asChild size="sm" className="bg-gradient-cyan hover:opacity-90 text-white glow-cyan btn-sheen">
             <Link href="/interview">
               <Brain className="mr-1.5 h-3.5 w-3.5" /> Interview Prep
             </Link>
           </Button>
-          <Button asChild size="sm" className="bg-gradient-brand hover:opacity-90 text-white glow-brand">
+          <Button asChild size="sm" className="bg-gradient-brand hover:opacity-90 text-white glow-brand btn-sheen">
             <Link href="/dashboard">
               Dashboard
             </Link>
