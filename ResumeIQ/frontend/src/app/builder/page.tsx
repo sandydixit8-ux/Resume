@@ -16,6 +16,7 @@ import {
   Globe, MapPin, Award,
 } from "lucide-react"
 import { getResume, getCountries, getCountry, exportResume } from "@/lib/api"
+import Reveal from "@/components/reveal"
 
 type Experience = { title: string; company: string; dates: string; bullets: string[] }
 type Education = { institution: string; degree: string; dates: string }
@@ -622,7 +623,7 @@ function BuilderInner() {
       <Header />
       <main id="main-content" className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-7xl">
-          <div className="text-center mb-8">
+          <Reveal className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-sm font-medium text-emerald-300 mb-4">
               <FileText className="h-3.5 w-3.5" />
               Resume Builder
@@ -631,8 +632,9 @@ function BuilderInner() {
             <p className="mt-3 text-muted-foreground text-lg max-w-2xl mx-auto">
               Enter your details, pick a template, preview live, and download your resume
             </p>
-          </div>
+          </Reveal>
 
+          <Reveal delay={1}>
           <Card className="border border-border/50 bg-transparent mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -666,6 +668,7 @@ function BuilderInner() {
               </div>
             </CardContent>
           </Card>
+          </Reveal>
 
           <div className="grid lg:grid-cols-2 gap-6">
             <Card className="border border-border/50 bg-transparent">

@@ -14,6 +14,7 @@ import {
   X, CheckCircle2, FileUp,
 } from "lucide-react"
 import { getInterviewQuestions, getInterviewQuestionsFromText, uploadResume } from "@/lib/api"
+import Reveal from "@/components/reveal"
 
 const categoryConfig: Record<string, { icon: any; label: string; color: string }> = {
   resume: { icon: BookOpen, label: "Resume-Based", color: "text-emerald-400" },
@@ -92,7 +93,7 @@ export default function InterviewPage() {
       <Header />
       <main id="main-content" className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-5xl">
-          <div className="text-center mb-8">
+          <Reveal className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-sm font-medium text-emerald-300 mb-4">
               <Lightbulb className="h-3.5 w-3.5" />
               Interview Prep
@@ -101,8 +102,9 @@ export default function InterviewPage() {
             <p className="mt-3 text-muted-foreground text-lg max-w-2xl mx-auto">
               Generate tailored interview questions based on your resume and job description
             </p>
-          </div>
+          </Reveal>
 
+          <Reveal delay={1}>
           <Card className="border border-border/50 bg-transparent mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -240,6 +242,7 @@ export default function InterviewPage() {
               </Button>
             </CardContent>
           </Card>
+          </Reveal>
 
           {error && (
             <div className="mb-6 p-4 bg-red-950/30 border border-red-800/50 rounded-xl text-sm text-red-400">{error}</div>
