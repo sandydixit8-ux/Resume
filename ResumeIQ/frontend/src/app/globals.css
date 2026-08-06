@@ -212,17 +212,17 @@ body {
 .animate-bounce-subtle { animation: bounce-subtle 2.2s ease-in-out infinite; }
 .animate-blink { animation: blink 1s step-end infinite; }
 
-/* Scroll-reveal system: start hidden, animate in when .reveal-visible is added */
-.reveal {
+/* Scroll-reveal system: start hidden only when JS is active, animate in when .reveal-visible is added */
+.js .reveal {
   opacity: 0;
   transform: translateY(28px);
   transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: opacity, transform;
 }
-.reveal-left { transform: translateX(-32px); }
-.reveal-right { transform: translateX(32px); }
-.reveal-zoom { transform: scale(0.92); }
-.reveal-visible {
+.js .reveal-left { transform: translateX(-32px); }
+.js .reveal-right { transform: translateX(32px); }
+.js .reveal-zoom { transform: scale(0.92); }
+.js .reveal-visible {
   opacity: 1;
   transform: none;
 }
@@ -258,7 +258,7 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  .reveal { opacity: 1; transform: none; }
+  .js .reveal { opacity: 1; transform: none; }
 }
 
 .text-gradient {

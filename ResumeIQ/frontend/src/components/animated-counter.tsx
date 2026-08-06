@@ -12,12 +12,13 @@ type AnimatedCounterProps = {
 
 export default function AnimatedCounter({ target, duration = 1600, prefix = "", suffix = "", className = "" }: AnimatedCounterProps) {
   const ref = useRef<HTMLSpanElement | null>(null)
-  const [value, setValue] = useState(0)
+  const [value, setValue] = useState(target)
   const started = useRef(false)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    setValue(0)
     if (typeof IntersectionObserver === "undefined") {
       setValue(target)
       return

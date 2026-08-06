@@ -190,7 +190,7 @@ export default function LandingPage() {
           <div className="absolute bottom-40 -right-40 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-3xl animate-aurora" style={{ animationDelay: "4s" }} />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl animate-pulse-glow" />
 
-          <div className="absolute hidden lg:block top-[18%] left-[10%] animate-float">
+          <div className="absolute hidden xl:block top-[18%] left-[10%] animate-float">
             <div className="glass rounded-xl px-4 py-3 flex items-center gap-3 animate-scale-in">
               <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center">
                 <FileCheck className="h-4 w-4 text-emerald-400" />
@@ -202,7 +202,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="absolute hidden lg:block top-[30%] right-[8%] animate-float-delayed">
+          <div className="absolute hidden xl:block top-[30%] right-[8%] animate-float-delayed">
             <div className="glass rounded-xl px-4 py-3 flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-cyan-500/20 flex items-center justify-center">
                 <Sparkles className="h-4 w-4 text-cyan-400" />
@@ -214,7 +214,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="absolute hidden lg:block bottom-[24%] left-[14%] animate-float-delayed">
+          <div className="absolute hidden xl:block bottom-[24%] left-[14%] animate-float-delayed">
             <div className="glass rounded-xl px-4 py-3 flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-indigo-500/20 flex items-center justify-center">
                 <Target className="h-4 w-4 text-indigo-400" />
@@ -388,7 +388,7 @@ export default function LandingPage() {
             </Reveal>
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               {displayPlans.map((p, i) => (
-                <Reveal key={i} delay={i as 0 | 1 | 2} className={p.highlighted ? "md:-mt-4 md:mb-[-1rem]" : ""}>
+                <Reveal key={i} delay={i as 0 | 1 | 2} className="h-full">
                   <Card
                     className={`relative overflow-hidden border h-full ${
                       p.highlighted
