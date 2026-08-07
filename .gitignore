@@ -1,3 +1,10 @@
 # Root ignores (ResumeIQ lives in /ResumeIQ; its own .gitignore handles the rest)
 publish/
 *.log
+
+# Agents suite
+Agents/.env
+Agents/data/
+Agents/outputs/
+__pycache__/
+*.pyc
