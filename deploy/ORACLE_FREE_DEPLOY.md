@@ -63,8 +63,8 @@ Then on the server:
 ```bash
 # Download the deploy tooling
 cd /tmp
-git clone https://github.com/dixitsandeep339-netizen/Resume-IQ.git
-cd Resume-IQ
+git clone https://github.com/sandydixit8-ux/Resume.git
+cd Resume
 
 # Point it at your free subdomain
 sed -i "s/yourdomain\.com/resumeiq.duckdns.org/g" deploy/setup-vps.sh

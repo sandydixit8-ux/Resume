@@ -47,8 +47,8 @@ ssh -i $env:USERPROFILE\.ssh\id_ed25519 ubuntu@<PUBLIC_IP>
 On the server:
 ```bash
 cd /tmp
-git clone https://github.com/dixitsandeep339-netizen/Resume-IQ.git
-cd Resume-IQ
+git clone https://github.com/sandydixit8-ux/Resume.git
+cd Resume
 sed -i "s/yourdomain\.com/resumeiq-api.duckdns.org/g" deploy/setup-backend-only.sh
 sudo bash deploy/setup-backend-only.sh
 ```

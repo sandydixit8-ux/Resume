@@ -12,7 +12,7 @@ This guide tells you exactly what to click to put your ResumeIQ website on the i
 
 ## What you need before starting (10 minutes)
 
-- A **GitHub account** (your code is already there: https://github.com/dixitsandeep339-netizen/Resume-IQ)
+- A **GitHub account** (your code is already there: https://github.com/sandydixit8-ux/Resume)
 - An **email address** you can check
 - A **mobile phone** for text verification
 - A **debit/credit card** (needed only for Oracle's free-tier verification, never charged)
@@ -89,8 +89,8 @@ This is the "AI brain". It must run on a server that's always on. Oracle gives y
 3. Once connected, run these lines one by one (paste each, press Enter, wait):
    ```
    cd /tmp
-   git clone https://github.com/dixitsandeep339-netizen/Resume-IQ.git
-   cd Resume-IQ
+   git clone https://github.com/sandydixit8-ux/Resume.git
+   cd Resume
    sed -i "s/yourdomain\.com/resumeiq-api.duckdns.org/g" deploy/setup-backend-only.sh
    sudo bash deploy/setup-backend-only.sh
    ```

@@ -11,7 +11,7 @@ set -euo pipefail
 
 YOUR_DOMAIN="yourdomain.com"
 APP_DIR="/var/www/resumeiq"
-REPO_URL="https://github.com/dixitsandeep339-netizen/Resume-IQ.git"
+REPO_URL="https://github.com/sandydixit8-ux/Resume.git"
 DATA_DIR="$APP_DIR/data"
 BACKEND_DIR="$APP_DIR/backend"
 FRONTEND_DIR="$APP_DIR/frontend"
