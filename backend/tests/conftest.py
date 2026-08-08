@@ -12,6 +12,10 @@ os.environ["APP_VERSION"] = "1.0.0"
 # (and its cached Settings) is first imported.
 os.environ["ANTHROPIC_API_KEY"] = ""
 os.environ["GROQ_API_KEY"] = ""
+# Pin admin credentials so the suite is deterministic even when CI sets a
+# different ADMIN_PASSWORD for production-style validation.
+os.environ["ADMIN_USERNAME"] = "admin"
+os.environ["ADMIN_PASSWORD"] = "admin123"
 
 import pytest
 from fastapi.testclient import TestClient
