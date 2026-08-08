@@ -23,8 +23,8 @@ export default function AdminLoginPage() {
       localStorage.setItem("admin_token", result.token)
       localStorage.setItem("admin_username", result.username)
       router.push("/admin/dashboard")
-    } catch (err: any) {
-      setError(err.message || "Login failed")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed")
     } finally { setLoading(false) }
   }
 

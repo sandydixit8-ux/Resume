@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,9 +32,49 @@ import {
   Award,
 } from "lucide-react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import AIResumeTools from "@/components/ai-tools"
+
+const AIResumeTools = dynamic(() => import("@/components/ai-tools"), {
+  loading: () => (
+    <div className="flex flex-col items-center gap-4 py-16 animate-scale-in">
+      <div className="h-10 w-10 rounded-full border-4 border-emerald-800 border-t-emerald-500 animate-spin" />
+      <p className="text-muted-foreground font-medium">Loading AI tools...</p>
+    </div>
+  ),
+})
+
+type ResumeDetail = {
+  original_filename?: string
+  file_type?: string
+  file_size_bytes?: number
+  ats_view_text?: string
+}
+
+type AnalysisResult = {
+  overall_score?: number
+  category_scores?: Record<string, number>
+  category_feedback?: Record<string, string>
+  priority_fixes?: string[]
+}
+
+type JdMatchResult = {
+  match_score: number
+  matched_keywords?: { skill: string }[]
+  hard_requirements?: { skill: string }[]
+  missing_keywords?: { skill: string; status?: string }[]
+  semantic_gaps?: { jd_term: string; suggestion: string }[]
+  over_indexed?: { item: string; type: string; suggestion: string }[]
+}
+
+type RewriteSuggestion = {
+  section: string
+  type: string
+  original: string
+  suggestion?: string
+  explanation?: string
+}
 
 function ScoreGauge({ value, label }: { value: number; label: string }) {
   const color =
@@ -66,18 +106,18 @@ export default function ResultsPage() {
   const resumeId = Number(params.id)
 
   const [loading, setLoading] = useState(true)
-  const [resume, setResume] = useState<any>(null)
-  const [analysis, setAnalysis] = useState<any>(null)
+  const [resume, setResume] = useState<ResumeDetail | null>(null)
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("ats")
 
   const [jdText, setJdText] = useState("")
   const [jdTitle, setJdTitle] = useState("")
   const [jdCompany, setJdCompany] = useState("")
-  const [jdMatch, setJdMatch] = useState<any>(null)
+  const [jdMatch, setJdMatch] = useState<JdMatchResult | null>(null)
   const [jdLoading, setJdLoading] = useState(false)
 
-  const [rewrites, setRewrites] = useState<any[]>([])
+  const [rewrites, setRewrites] = useState<RewriteSuggestion[]>([])
   const [rewritesLoading, setRewritesLoading] = useState(false)
 
   const [clTone, setClTone] = useState("formal")
@@ -86,18 +126,21 @@ export default function ResultsPage() {
   const [clLoading, setClLoading] = useState(false)
   const [clCopied, setClCopied] = useState(false)
 
-  useEffect(() => { loadData() }, [resumeId])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [res, an] = await Promise.all([getResume(resumeId), getAnalysis(resumeId)])
       setResume(res)
       if (an) setAnalysis(an)
       else { const n = await analyzeResume(resumeId); setAnalysis(n) }
-    } catch (err: any) { setError(err.message) }
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     finally { setLoading(false) }
-  }
+  }, [resumeId])
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => { loadData() })
+    return () => cancelAnimationFrame(raf)
+  }, [loadData])
 
   async function handleJDMatch() {
     if (!jdText.trim()) return
@@ -105,7 +148,7 @@ export default function ResultsPage() {
     try {
       const r = await matchJD(resumeId, jdText, jdTitle, jdCompany)
       setJdMatch(r); setActiveTab("jd-match")
-    } catch (err: any) { setError(err.message) }
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     finally { setJdLoading(false) }
   }
 
@@ -114,7 +157,7 @@ export default function ResultsPage() {
     try {
       const r = await getRewriteSuggestions(resumeId, jdText)
       setRewrites(r.suggestions || []); setActiveTab("rewrites")
-    } catch (err: any) { setError(err.message) }
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     finally { setRewritesLoading(false) }
   }
 
@@ -124,7 +167,7 @@ export default function ResultsPage() {
     try {
       const r = await generateCoverLetter({ resume_id: resumeId, jd_text: jdText, jd_title: jdTitle, company_name: jdCompany, tone: clTone, length: clLength })
       setCoverLetter(r.content); setActiveTab("cover-letter")
-    } catch (err: any) { setError(err.message) }
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     finally { setClLoading(false) }
   }
 
@@ -180,6 +223,7 @@ export default function ResultsPage() {
       <Header />
 
       <main id="main-content" className="flex-1 pt-20 pb-12">
+        <h1 className="sr-only">Resume Analysis Results</h1>
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="grid lg:grid-cols-3 gap-6">
@@ -202,7 +246,7 @@ export default function ResultsPage() {
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-gradient opacity-50" />
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                    {analysis?.category_scores && Object.entries(analysis.category_scores).map(([key, val]: any) => (
+                    {analysis?.category_scores && Object.entries(analysis.category_scores).map(([key, val]) => (
                       <ScoreGauge key={key} value={val} label={key} />
                     ))}
                   </div>
@@ -229,11 +273,11 @@ export default function ResultsPage() {
                     <Award className="h-3.5 w-3.5 mr-1.5" />
                     {scoreLabel}
                   </Badge>
-                  {analysis?.priority_fixes?.length > 0 && (
+                  {analysis?.priority_fixes?.length ? (
                     <p className="text-xs text-muted-foreground text-center mt-4">
                       {analysis.priority_fixes.length} priority fix(es) recommended
                     </p>
-                  )}
+                  ) : null}
                 </CardContent>
               </Card>
             </div>
@@ -247,10 +291,11 @@ export default function ResultsPage() {
                 <CardDescription>Paste a job description to match, rewrite, and generate a cover letter</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Job Title</label>
+                    <label htmlFor="jd-title" className="text-sm font-medium mb-1 block">Job Title</label>
                     <input
+                      id="jd-title"
                       className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
                       placeholder="e.g. Senior Software Engineer"
                       value={jdTitle}
@@ -258,8 +303,9 @@ export default function ResultsPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Company</label>
+                    <label htmlFor="jd-company" className="text-sm font-medium mb-1 block">Company</label>
                     <input
+                      id="jd-company"
                       className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
                       placeholder="e.g. Acme Corp"
                       value={jdCompany}
@@ -268,6 +314,8 @@ export default function ResultsPage() {
                   </div>
                 </div>
                 <Textarea
+                  id="jd-text"
+                  aria-label="Job description"
                   placeholder="Paste the full job description here..."
                   className="min-h-[160px] bg-background/50"
                   value={jdText}
@@ -288,7 +336,7 @@ export default function ResultsPage() {
             </Card>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-5 bg-muted/80 p-1 rounded-xl">
+              <TabsList className="grid grid-cols-2 sm:grid-cols-5 bg-muted/80 p-1 rounded-xl">
                 <TabsTrigger value="ats" className="rounded-lg data-[state=active]:bg-gradient-brand data-[state=active]:text-white">ATS Details</TabsTrigger>
                 <TabsTrigger value="jd-match" className="rounded-lg data-[state=active]:bg-gradient-brand data-[state=active]:text-white">
                   JD Match {jdMatch ? <Badge className="ml-2 bg-white/20 text-white border-0">{jdMatch.match_score}%</Badge> : null}
@@ -312,13 +360,13 @@ export default function ResultsPage() {
                     <CardDescription>Detailed scoring by ATS compatibility factor</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {analysis?.category_feedback && Object.entries(analysis.category_feedback).map(([key, feedback]: any) => (
+                    {analysis?.category_feedback && Object.entries(analysis.category_feedback).map(([key, feedback]) => (
                       <div key={key} className="p-4 rounded-xl bg-muted/50 hover:bg-muted/80 transition-colors">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-semibold">{key}</span>
                           <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${
-                            analysis?.category_scores?.[key] >= 80 ? "bg-emerald-900/40 text-emerald-400" :
-                            analysis?.category_scores?.[key] >= 60 ? "bg-amber-900/40 text-amber-400" :
+                            (analysis?.category_scores?.[key] ?? 0) >= 80 ? "bg-emerald-900/40 text-emerald-400" :
+                            (analysis?.category_scores?.[key] ?? 0) >= 60 ? "bg-amber-900/40 text-amber-400" :
                             "bg-red-900/40 text-red-400"
                           }`}>{analysis?.category_scores?.[key]}/100</span>
                         </div>
@@ -378,7 +426,7 @@ export default function ResultsPage() {
                     </Card>
 
                     <div className="grid md:grid-cols-2 gap-6">
-                      {jdMatch.matched_keywords?.length > 0 && (
+                      {jdMatch.matched_keywords?.length ? (
                         <Card className="border-0 bg-gradient-to-br from-emerald-950/30 to-teal-950/20">
                           <CardHeader className="pb-3">
                             <CardTitle className="flex items-center gap-2 text-emerald-400">
@@ -388,15 +436,15 @@ export default function ResultsPage() {
                           </CardHeader>
                           <CardContent>
                             <div className="flex flex-wrap gap-2">
-                              {jdMatch.matched_keywords.map((k: any, i: number) => (
+                              {jdMatch.matched_keywords.map((k, i: number) => (
                                 <Badge key={i} className="bg-emerald-900/40 text-emerald-400 border-0 hover:bg-emerald-900/60">{k.skill}</Badge>
                               ))}
                             </div>
                           </CardContent>
                         </Card>
-                      )}
+                      ) : null}
 
-                      {jdMatch.hard_requirements?.length > 0 && (
+                      {jdMatch.hard_requirements?.length ? (
                         <Card className="border-0 bg-gradient-to-br from-red-950/30 to-rose-950/20">
                           <CardHeader className="pb-3">
                             <CardTitle className="flex items-center gap-2 text-red-400">
@@ -406,16 +454,16 @@ export default function ResultsPage() {
                           </CardHeader>
                           <CardContent>
                             <div className="flex flex-wrap gap-2">
-                              {jdMatch.hard_requirements.map((r: any, i: number) => (
+                              {jdMatch.hard_requirements.map((r, i: number) => (
                                 <Badge key={i} className="bg-red-900/40 text-red-400 border-0">{r.skill}</Badge>
                               ))}
                             </div>
                           </CardContent>
                         </Card>
-                      )}
+                      ) : null}
                     </div>
 
-                    {jdMatch.missing_keywords?.filter((k: any) => k.status !== "required")?.length > 0 && (
+                    {jdMatch.missing_keywords?.filter((k) => k.status !== "required")?.length ? (
                       <Card className="border-0 bg-gradient-to-br from-amber-950/30 to-yellow-950/20">
                         <CardHeader className="pb-3">
                           <CardTitle className="flex items-center gap-2 text-amber-400">
@@ -425,15 +473,15 @@ export default function ResultsPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="flex flex-wrap gap-2">
-                            {jdMatch.missing_keywords.filter((k: any) => k.status !== "required").map((k: any, i: number) => (
+                            {jdMatch.missing_keywords.filter((k) => k.status !== "required").map((k, i: number) => (
                               <Badge key={i} className="bg-amber-900/40 text-amber-400 border-0">{k.skill}</Badge>
                             ))}
                           </div>
                         </CardContent>
                       </Card>
-                    )}
+                    ) : null}
 
-                    {jdMatch.semantic_gaps?.length > 0 && (
+                    {jdMatch.semantic_gaps?.length ? (
                       <Card className="border border-border/50 bg-transparent">
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
@@ -443,7 +491,7 @@ export default function ResultsPage() {
                           <CardDescription>Your resume mentions these concepts differently than the JD</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          {jdMatch.semantic_gaps.map((gap: any, i: number) => (
+                          {jdMatch.semantic_gaps.map((gap, i: number) => (
                             <div key={i} className="p-4 rounded-xl bg-muted/50 border border-border/50">
                               <p className="font-semibold text-sm">JD says: <span className="text-emerald-400">{gap.jd_term}</span></p>
                               <p className="text-sm text-muted-foreground mt-1">{gap.suggestion}</p>
@@ -451,9 +499,9 @@ export default function ResultsPage() {
                           ))}
                         </CardContent>
                       </Card>
-                    )}
+                    ) : null}
 
-                    {jdMatch.over_indexed?.length > 0 && (
+                    {jdMatch.over_indexed?.length ? (
                       <Card className="border border-border/50 bg-transparent">
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
@@ -464,7 +512,7 @@ export default function ResultsPage() {
                         </CardHeader>
                         <CardContent>
                           <ul className="space-y-3">
-                            {jdMatch.over_indexed.map((item: any, i: number) => (
+                            {jdMatch.over_indexed.map((item, i: number) => (
                               <li key={i} className="text-sm p-3 rounded-xl bg-muted/50 border border-border/50 flex items-start gap-3">
                                 <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                                 <span><strong>{item.item}</strong> ({item.type}) &mdash; <span className="text-muted-foreground">{item.suggestion}</span></span>
@@ -473,7 +521,7 @@ export default function ResultsPage() {
                           </ul>
                         </CardContent>
                       </Card>
-                    )}
+                    ) : null}
                   </>
                 ) : (
                   <Card className="border border-border/50 bg-transparent">
@@ -496,7 +544,7 @@ export default function ResultsPage() {
                         <RefreshCw className="mr-2 h-4 w-4" /> Regenerate
                       </Button>
                     </div>
-                    {rewrites.map((s: any, i: number) => (
+                    {rewrites.map((s, i: number) => (
                       <Card key={i} className="border border-border/50 bg-transparent overflow-hidden">
                         <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-500 to-cyan-500" />
                         <CardHeader className="pb-2">
@@ -558,6 +606,7 @@ export default function ResultsPage() {
                         </div>
                         <div className="flex gap-2 flex-wrap">
                           <Select
+                            aria-label="Cover letter tone"
                             options={[
                               { value: "formal", label: "Formal" },
                               { value: "conversational", label: "Conversational" },
@@ -568,6 +617,7 @@ export default function ResultsPage() {
                             onChange={(e) => { setClTone(e.target.value); handleCoverLetter() }}
                           />
                           <Select
+                            aria-label="Cover letter length"
                             options={[
                               { value: "short", label: "Short" },
                               { value: "medium", label: "Medium" },

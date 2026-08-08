@@ -15,8 +15,11 @@ function SuccessContent() {
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id")
-    if (sessionId) setStatus("success")
-    else setStatus("error")
+    const raf = requestAnimationFrame(() => {
+      if (sessionId) setStatus("success")
+      else setStatus("error")
+    })
+    return () => cancelAnimationFrame(raf)
   }, [searchParams])
 
   return (

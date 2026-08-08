@@ -12,10 +12,18 @@ import {
   Lightbulb, Sparkles, Mic, BookOpen, ListChecks, Loader2,
   Brain, Target, ChevronDown, ChevronUp, RefreshCw, Upload, FileText,
   X, CheckCircle2, FileUp,
+  type LucideIcon,
 } from "lucide-react"
 import { getInterviewQuestions, getInterviewQuestionsFromText, uploadResume } from "@/lib/api"
 
-const categoryConfig: Record<string, { icon: any; label: string; color: string }> = {
+type InterviewQuestion = {
+  category: string
+  type: string
+  question: string
+  context?: string
+}
+
+const categoryConfig: Record<string, { icon: LucideIcon; label: string; color: string }> = {
   resume: { icon: BookOpen, label: "Resume-Based", color: "text-emerald-400" },
   jd: { icon: Target, label: "JD-Focused", color: "text-cyan-400" },
   behavioral: { icon: Mic, label: "Behavioral", color: "text-amber-400" },
@@ -34,7 +42,7 @@ export default function InterviewPage() {
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [jdText, setJdText] = useState("")
-  const [questions, setQuestions] = useState<any[]>([])
+  const [questions, setQuestions] = useState<InterviewQuestion[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<number | null>(null)
@@ -51,8 +59,8 @@ export default function InterviewPage() {
       const r = await uploadResume(file)
       setUploadedId(r.id)
       setUploadedName(file.name)
-    } catch (err: any) {
-      setUploadError(err.message || "Upload failed")
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed")
       setUploadedId(null); setUploadedName("")
     } finally {
       setUploading(false)
@@ -74,7 +82,7 @@ export default function InterviewPage() {
           ? await getInterviewQuestions(uploadedId, jdText || undefined)
           : await getInterviewQuestionsFromText(resumeText, jdText || undefined)
       setQuestions(r.questions || [])
-    } catch (err: any) { setError(err.message) }
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     finally { setLoading(false) }
   }
 
@@ -147,6 +155,7 @@ export default function InterviewPage() {
                 {mode === "text" && (
                   <>
                     <Textarea
+                      aria-label="Your resume text"
                       placeholder="Paste your resume text here... e.g. Senior Software Engineer with 6 years of experience..."
                       className="min-h-[160px] bg-background/50 font-mono text-xs"
                       value={resumeText}
@@ -209,14 +218,16 @@ export default function InterviewPage() {
                       </button>
                     )}
                     {uploadError && (
-                      <p className="text-xs text-red-400 mt-2">{uploadError}</p>
+                      <p role="alert" className="text-xs text-red-400 mt-2">{uploadError}</p>
                     )}
                   </>
                 )}
 
                 {mode === "id" && (
                   <div>
+                    <label htmlFor="interview-resume-id" className="sr-only">Resume ID</label>
                     <input
+                      id="interview-resume-id"
                       className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
                       placeholder="Enter resume ID from analysis"
                       value={resumeId}
@@ -227,8 +238,9 @@ export default function InterviewPage() {
                 )}
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">Job Description (optional)</label>
+                <label htmlFor="interview-jd-text" className="text-sm font-medium mb-1 block">Job Description (optional)</label>
                 <Textarea
+                  id="interview-jd-text"
                   placeholder="Paste a job description for role-specific questions..."
                   className="min-h-[120px] bg-background/50"
                   value={jdText}
@@ -242,7 +254,7 @@ export default function InterviewPage() {
           </Card>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-950/30 border border-red-800/50 rounded-xl text-sm text-red-400">{error}</div>
+            <div role="alert" className="mb-6 p-4 bg-red-950/30 border border-red-800/50 rounded-xl text-sm text-red-400">{error}</div>
           )}
 
           {questions.length > 0 && (
@@ -278,8 +290,18 @@ export default function InterviewPage() {
                     return (
                       <Card
                         key={i}
-                        className={`border border-border/50 bg-transparent overflow-hidden cursor-pointer transition-all duration-300 hover:border-emerald-500/30 ${isOpen ? "border-emerald-500/40" : ""}`}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isOpen}
+                        aria-controls={`interview-panel-${i}`}
+                        className={`border border-border/50 bg-transparent overflow-hidden cursor-pointer transition-all duration-300 hover:border-emerald-500/30 focus-visible:border-emerald-500 focus-visible:outline-none ${isOpen ? "border-emerald-500/40" : ""}`}
                         onClick={() => setExpanded(isOpen ? null : i)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            setExpanded(isOpen ? null : i)
+                          }
+                        }}
                       >
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between gap-4">
@@ -307,7 +329,7 @@ export default function InterviewPage() {
                           </div>
                         </CardHeader>
                         {isOpen && q.context && (
-                          <CardContent className="pt-0 pb-4">
+                          <CardContent id={`interview-panel-${i}`} className="pt-0 pb-4">
                             <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
                               <p className="text-xs text-muted-foreground font-medium mb-1">Context:</p>
                               <p className="text-sm text-muted-foreground">{q.context}</p>

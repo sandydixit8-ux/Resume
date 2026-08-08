@@ -1,5 +1,32 @@
 const API_BASE = ""
 
+const SESSION_STORAGE_KEY = "resumeiq_session_token"
+
+function getSessionToken(): string {
+  if (typeof window === "undefined") return ""
+  let token = window.localStorage.getItem(SESSION_STORAGE_KEY)
+  if (!token) {
+    token =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36)
+    window.localStorage.setItem(SESSION_STORAGE_KEY, token)
+  }
+  return token
+}
+
+function sessionHeaders(): Record<string, string> {
+  const token = getSessionToken()
+  return token ? { "X-Session-Token": token } : {}
+}
+
+function persistIssuedToken(data: unknown) {
+  const token = (data as { session_token?: string } | null)?.session_token
+  if (token && typeof window !== "undefined") {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, token)
+  }
+}
+
 const FALLBACK_COUNTRY_RULES: Record<string, { name: string; fields: string[]; tips: string; photo: string; template: string }> = {
   us: { name: "United States", fields: [], tips: "No photo, age, marital status, religion or personal details. Lead with a keyword-rich summary.", photo: "no", template: "modern" },
   ca: { name: "Canada", fields: ["work_authorization"], tips: "Quantify achievements. No photo or personal details. Mention work authorization status if relevant.", photo: "no", template: "professional" },
@@ -37,10 +64,13 @@ export async function uploadResume(file: File) {
   formData.append("file", file)
   const res = await fetch(`${API_BASE}/api/v1/resume/upload`, {
     method: "POST",
+    headers: sessionHeaders(),
     body: formData,
   })
   if (!res.ok) throw new Error(await res.text())
-  return res.json()
+  const data = await res.json()
+  persistIssuedToken(data)
+  return data
 }
 
 export async function pasteResume(text: string) {
@@ -49,28 +79,32 @@ export async function pasteResume(text: string) {
   formData.append("filename", "pasted_resume.txt")
   const res = await fetch(`${API_BASE}/api/v1/resume/paste`, {
     method: "POST",
+    headers: sessionHeaders(),
     body: formData,
   })
   if (!res.ok) throw new Error(await res.text())
-  return res.json()
+  const data = await res.json()
+  persistIssuedToken(data)
+  return data
 }
 
 export async function analyzeResume(resumeId: number) {
   const res = await fetch(`${API_BASE}/api/v1/analyze/${resumeId}`, {
     method: "POST",
+    headers: sessionHeaders(),
   })
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
 
 export async function getResume(resumeId: number) {
-  const res = await fetch(`${API_BASE}/api/v1/resume/${resumeId}`)
+  const res = await fetch(`${API_BASE}/api/v1/resume/${resumeId}`, { headers: sessionHeaders() })
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
 
 export async function getAnalysis(resumeId: number) {
-  const res = await fetch(`${API_BASE}/api/v1/analyze/${resumeId}`)
+  const res = await fetch(`${API_BASE}/api/v1/analyze/${resumeId}`, { headers: sessionHeaders() })
   if (!res.ok) {
     if (res.status === 404) return null
     throw new Error(await res.text())
@@ -78,10 +112,22 @@ export async function getAnalysis(resumeId: number) {
   return res.json()
 }
 
+export async function listResumes() {
+  const res = await fetch(`${API_BASE}/api/v1/resume/`, { headers: sessionHeaders() })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
+export async function listAnalyses() {
+  const res = await fetch(`${API_BASE}/api/v1/analyze/`, { headers: sessionHeaders() })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+
 export async function matchJD(resumeId: number, jdText: string, jdTitle?: string, jdCompany?: string) {
   const res = await fetch(`${API_BASE}/api/v1/jd-match/${resumeId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...sessionHeaders() },
     body: JSON.stringify({ jd_text: jdText, jd_title: jdTitle, jd_company: jdCompany }),
   })
   if (!res.ok) throw new Error(await res.text())
@@ -91,7 +137,7 @@ export async function matchJD(resumeId: number, jdText: string, jdTitle?: string
 export async function getRewriteSuggestions(resumeId: number, jdText?: string) {
   const res = await fetch(`${API_BASE}/api/v1/rewrite/${resumeId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...sessionHeaders() },
     body: JSON.stringify({ jd_text: jdText }),
   })
   if (!res.ok) throw new Error(await res.text())
@@ -101,7 +147,7 @@ export async function getRewriteSuggestions(resumeId: number, jdText?: string) {
 export async function getInterviewQuestions(resumeId: number, jdText?: string) {
   const res = await fetch(`${API_BASE}/api/v1/interview/questions/${resumeId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...sessionHeaders() },
     body: JSON.stringify({ jd_text: jdText }),
   })
   if (!res.ok) throw new Error(await res.text())
@@ -223,7 +269,7 @@ export async function generateCoverLetter(params: {
 }) {
   const res = await fetch(`${API_BASE}/api/v1/cover-letter`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...sessionHeaders() },
     body: JSON.stringify(params),
   })
   if (!res.ok) throw new Error(await res.text())
@@ -239,7 +285,7 @@ export async function getAIStatus() {
 async function aiPost(path: string, resumeId: number, extra: Record<string, unknown> = {}) {
   const res = await fetch(`${API_BASE}${path}/${resumeId}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...sessionHeaders() },
     body: JSON.stringify(extra),
   })
   if (!res.ok) throw new Error(await res.text())
@@ -300,7 +346,7 @@ export async function exportResume(params: {
 }) {
   const res = await fetch(`${API_BASE}/api/v1/export`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...sessionHeaders() },
     body: JSON.stringify(params),
   })
   if (!res.ok) throw new Error(await res.text())

@@ -6,14 +6,32 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Shield, Users, Eye, BarChart3, LogOut, ArrowLeft, Globe, Clock, CreditCard, Mail, Trash2 } from "lucide-react"
+import { Shield, Users, Eye, BarChart3, LogOut, ArrowLeft, Globe, Clock, Mail, Trash2 } from "lucide-react"
 import { getAdminStats, getContactMessages, deleteContactMessage } from "@/lib/api"
+
+type AdminStats = {
+  total_visits?: number
+  today_visits?: number
+  unique_visitors?: number
+  top_pages?: { path: string; count: number }[]
+  recent_visits?: { path: string; ip?: string | null; timestamp?: string | null }[]
+}
+
+type ContactMessage = {
+  id: number
+  name: string
+  email: string
+  company?: string | null
+  subject?: string
+  created_at?: string | null
+  message: string
+}
 
 export default function AdminDashboardPage() {
   const router = useRouter()
-  const [stats, setStats] = useState<any>(null)
+  const [stats, setStats] = useState<AdminStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [messages, setMessages] = useState<any[]>([])
+  const [messages, setMessages] = useState<ContactMessage[]>([])
   const [messagesLoading, setMessagesLoading] = useState(true)
 
   useEffect(() => {
@@ -144,9 +162,9 @@ export default function AdminDashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {stats?.top_pages?.length > 0 ? (
+                  {stats?.top_pages?.length ? (
                     <div className="space-y-2">
-                      {stats.top_pages.map((p: any, i: number) => (
+                      {stats.top_pages.map((p, i: number) => (
                         <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50">
                           <span className="text-sm font-mono truncate max-w-[70%]">{p.path}</span>
                           <Badge className="bg-emerald-900/40 text-emerald-400 border-0">{p.count} views</Badge>
@@ -167,9 +185,9 @@ export default function AdminDashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {stats?.recent_visits?.length > 0 ? (
+                  {stats?.recent_visits?.length ? (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                      {stats.recent_visits.map((v: any, i: number) => (
+                      {stats.recent_visits.map((v, i: number) => (
                         <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50 text-xs">
                           <span className="font-mono truncate max-w-[40%]">{v.path}</span>
                           <span className="text-muted-foreground truncate max-w-[30%]">{v.ip || "—"}</span>

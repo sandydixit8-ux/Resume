@@ -22,17 +22,18 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "/",
     siteName: "ResumeIQ AI",
     title: "ResumeIQ AI — Analyze. Optimize. Get Hired.",
     description:
       "AI-powered resume analysis, ATS scoring, JD matching, cover letter generation, and interview prep.",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "ResumeIQ AI — Analyze. Optimize. Get Hired." }],
   },
   twitter: {
     card: "summary_large_image",
     title: "ResumeIQ AI — Analyze. Optimize. Get Hired.",
     description:
       "AI-powered resume analysis, ATS scoring, JD matching, cover letter generation, and interview prep.",
+    images: ["/opengraph-image"],
   },
   alternates: { canonical: "/" },
 }

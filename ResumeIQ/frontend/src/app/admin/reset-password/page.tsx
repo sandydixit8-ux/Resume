@@ -30,8 +30,8 @@ export default function ResetPasswordPage() {
         throw new Error(data.detail || "Failed")
       }
       setDone(true)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reset failed")
     } finally { setLoading(false) }
   }
 

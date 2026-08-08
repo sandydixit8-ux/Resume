@@ -4,26 +4,50 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import {
   FileText, TrendingUp, Target, Sparkles, ArrowRight, BarChart3,
-  Loader2, Search, Plus,
+  Search, Plus,
 } from "lucide-react"
-import { getAnalysis } from "@/lib/api"
+import { listResumes, listAnalyses } from "@/lib/api"
+
+type ResumeSummary = {
+  id: number
+  original_filename: string
+  file_type: string
+  has_parsing_issues: boolean
+  created_at: string | null
+}
+
+type AnalysisSummary = {
+  id: number
+  resume_id: number
+  overall_score: number
+  created_at: string | null
+}
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<any>({ total: 0 })
+  const [stats, setStats] = useState<{ total: number; analyzed: number }>({ total: 0, analyzed: 0 })
+  const [resumes, setResumes] = useState<ResumeSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        // For now, show placeholder stats
-        setStats({ total: 3, analyzed: 2, matched: 1, letters: 1 })
-      } catch { }
-      finally { setLoading(false) }
+        const [resumeList, analysisList] = await Promise.all([listResumes(), listAnalyses()])
+        const analyzedIds = new Set((analysisList as AnalysisSummary[]).map((a) => a.resume_id))
+        setResumes((resumeList as ResumeSummary[]) || [])
+        setStats({
+          total: resumeList?.length ?? 0,
+          analyzed: analyzedIds.size,
+        })
+      } catch {
+        setResumes([])
+        setStats({ total: 0, analyzed: 0 })
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [])
@@ -65,7 +89,7 @@ export default function DashboardPage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <Card className="border border-border/50 bg-transparent">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Resumes Analyzed</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Resumes</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-gradient">{stats.total}</div>
@@ -73,10 +97,10 @@ export default function DashboardPage() {
               </Card>
               <Card className="border border-border/50 bg-transparent">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Interviews Secured</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Analyzed</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-gradient-warm">0</div>
+                  <div className="text-3xl font-bold text-gradient-warm">{stats.analyzed}</div>
                 </CardContent>
               </Card>
               <Card className="border border-border/50 bg-transparent">
@@ -155,17 +179,44 @@ export default function DashboardPage() {
                     <TrendingUp className="h-5 w-5 text-emerald-400" />
                     Activity
                   </CardTitle>
-                  <CardDescription>Your recent activity will appear here</CardDescription>
+                  <CardDescription>Your recent resume activity</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                  <BarChart3 className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                  <p className="text-muted-foreground text-sm">No activity yet</p>
-                  <p className="text-muted-foreground text-xs mt-1">Start by analyzing your first resume</p>
-                  <Button asChild size="sm" className="mt-4 bg-gradient-brand hover:opacity-90 text-white glow-brand">
-                    <Link href="/analyze">
-                      Analyze Resume <ArrowRight className="ml-2 h-3 w-3" />
-                    </Link>
-                  </Button>
+                <CardContent>
+                  {resumes.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <BarChart3 className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                      <p className="text-muted-foreground text-sm">No activity yet</p>
+                      <p className="text-muted-foreground text-xs mt-1">Start by analyzing your first resume</p>
+                      <Button asChild size="sm" className="mt-4 bg-gradient-brand hover:opacity-90 text-white glow-brand">
+                        <Link href="/analyze">
+                          Analyze Resume <ArrowRight className="ml-2 h-3 w-3" />
+                        </Link>
+                      </Button>
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {resumes.slice(0, 5).map((r) => (
+                        <li key={r.id}>
+                          <Link
+                            href={`/results/${r.id}`}
+                            className="flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted/80 transition-colors group"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <FileText className="h-4 w-4 text-emerald-400 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm truncate">{r.original_filename || `Resume ${r.id}`}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {r.created_at ? new Date(r.created_at).toLocaleDateString() : ""} ·{" "}
+                                  {r.has_parsing_issues ? "Has parsing issues" : "Parsed"}
+                                </p>
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-emerald-400 transition-colors shrink-0" />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </CardContent>
               </Card>
             </div>

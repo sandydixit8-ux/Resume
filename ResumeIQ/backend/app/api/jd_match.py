@@ -1,19 +1,23 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.resume import Resume
 from app.models.analysis import JDAnalysis
 from app.services.jd_matcher import JDMatcherService
+from app.api.deps import SESSION_TOKEN_HEADER, require_owner
 
 router = APIRouter(tags=["JD Match"])
 
 
 @router.post("/{resume_id}")
-def match_resume_to_jd(resume_id: int, request: dict, db: Session = Depends(get_db)):
-    resume = db.query(Resume).filter(Resume.id == resume_id).first()
-    if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+def match_resume_to_jd(
+    resume_id: int,
+    request: dict,
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
+    resume = require_owner(db, resume_id, x_session_token)
     jd_text = request.get("jd_text", "")
     jd_title = request.get("jd_title", "")
     jd_company = request.get("jd_company", "")
@@ -57,16 +61,26 @@ def match_resume_to_jd(resume_id: int, request: dict, db: Session = Depends(get_
 
 
 @router.get("/{resume_id}")
-def list_jd_matches(resume_id: int, db: Session = Depends(get_db)):
+def list_jd_matches(
+    resume_id: int,
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
+    require_owner(db, resume_id, x_session_token)
     matches = db.query(JDAnalysis).filter(JDAnalysis.resume_id == resume_id).order_by(JDAnalysis.created_at.desc()).all()
     return [{"id": m.id, "resume_id": m.resume_id, "jd_title": m.jd_title, "jd_company": m.jd_company, "match_score": m.match_score, "created_at": m.created_at.isoformat() if m.created_at else None} for m in matches]
 
 
 @router.get("/detail/{jd_id}")
-def get_jd_match_detail(jd_id: int, db: Session = Depends(get_db)):
+def get_jd_match_detail(
+    jd_id: int,
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
     match = db.query(JDAnalysis).filter(JDAnalysis.id == jd_id).first()
     if not match:
         raise HTTPException(status_code=404, detail="JD match not found")
+    require_owner(db, match.resume_id, x_session_token)
     return {
         "id": match.id,
         "resume_id": match.resume_id,

@@ -4,6 +4,13 @@ export const metadata: Metadata = {
   title: "Pricing",
   description:
     "Simple, transparent pricing. Choose the plan that fits your needs — Free, Pro, or Recruiter.",
+  alternates: { canonical: "/pricing" },
+  openGraph: {
+    url: "/pricing",
+    title: "Pricing",
+    description:
+      "Simple, transparent pricing. Choose the plan that fits your needs — Free, Pro, or Recruiter.",
+  },
 }
 
 export default function PricingLayout({ children }: { children: React.ReactNode }) {

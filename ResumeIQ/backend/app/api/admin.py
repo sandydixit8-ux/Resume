@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 from collections import defaultdict
@@ -16,11 +17,34 @@ from app.api.payment import PLANS
 from app.config import get_settings
 from app.services.email_service import send_reset_email, verify_reset_code, clear_reset_code
 
+logger = logging.getLogger("app.admin")
+
 router = APIRouter(tags=["Admin"])
 
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_WINDOW_SECONDS = 900
+FORGOT_MAX_ATTEMPTS = 3
+FORGOT_WINDOW_SECONDS = 900
 _login_attempts: dict[str, list[float]] = defaultdict(list)
+_forgot_attempts: dict[str, list[float]] = defaultdict(list)
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _within_limit(bucket: dict[str, list[float]], key: str, max_attempts: int, window: int) -> bool:
+    now = time.time()
+    attempts = [t for t in bucket[key] if now - t < window]
+    if len(attempts) >= max_attempts:
+        bucket[key] = attempts
+        return False
+    attempts.append(now)
+    bucket[key] = attempts
+    return True
 
 
 def _hash_password(password: str) -> str:
@@ -87,12 +111,9 @@ def admin_login(request: Request, body: dict, db: Session = Depends(get_db)):
     settings = get_settings()
     username = body.get("username", "")
     password = body.get("password", "")
-    ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    attempts = [t for t in _login_attempts[ip] if now - t < LOGIN_WINDOW_SECONDS]
-    attempts.append(now)
-    _login_attempts[ip] = attempts
-    if len(attempts) > LOGIN_MAX_ATTEMPTS:
+    ip = _client_ip(request)
+    if not _within_limit(_login_attempts, ip, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_SECONDS):
+        logger.warning("admin login rate-limited", extra={"event": "login_blocked", "ip": ip})
         raise HTTPException(status_code=429, detail="Too many login attempts. Please wait 15 minutes.")
     pwd = _get_admin_password(db)
     valid = False
@@ -102,8 +123,10 @@ def admin_login(request: Request, body: dict, db: Session = Depends(get_db)):
         else:
             valid = password == pwd  # legacy plaintext value (config default / pre-migration DB row)
     if not valid:
+        logger.warning("admin login failed", extra={"event": "login_failed", "ip": ip, "username": username})
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    _login_attempts[ip] = []
+    _login_attempts.pop(ip, None)
+    logger.info("admin login succeeded", extra={"event": "login_success", "ip": ip, "username": username})
     ttl = settings.access_token_expire_minutes * 60
     return {
         "token": _sign_token(username, settings.secret_key, ttl),
@@ -132,9 +155,12 @@ def admin_email_status():
     return {"configured": has_email and has_smtp, "email": settings.admin_email if has_email else ""}
 
 @router.post("/api/v1/admin/forgot-password")
-def admin_forgot_password(request: dict):
+def admin_forgot_password(request: Request, body: dict):
     settings = get_settings()
-    email = request.get("email", "")
+    email = body.get("email", "")
+    ip = _client_ip(request)
+    if not _within_limit(_forgot_attempts, f"{ip}:{email}", FORGOT_MAX_ATTEMPTS, FORGOT_WINDOW_SECONDS):
+        raise HTTPException(status_code=429, detail="Too many reset requests. Please wait 15 minutes.")
     if not email or email != settings.admin_email:
         raise HTTPException(status_code=404, detail="Email not found")
     code = send_reset_email(email)
@@ -152,6 +178,8 @@ def admin_reset_password(request: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Missing fields")
     if email != settings.admin_email:
         raise HTTPException(status_code=404, detail="Email not found")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
     if not verify_reset_code(email, code):
         raise HTTPException(status_code=400, detail="Invalid or expired code")
     clear_reset_code(email)

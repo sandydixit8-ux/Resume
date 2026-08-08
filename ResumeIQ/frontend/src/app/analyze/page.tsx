@@ -7,8 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { uploadResume, pasteResume } from "@/lib/api"
-import { Upload, FileText, Loader2, Sparkles, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react"
-import Link from "next/link"
+import { Upload, FileText, Loader2, Sparkles, CheckCircle2, AlertCircle } from "lucide-react"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 
@@ -27,8 +26,8 @@ export default function AnalyzePage() {
     try {
       const result = await uploadResume(file)
       router.push(`/results/${result.id}`)
-    } catch (err: any) {
-      setError(err.message || "Upload failed")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed")
     } finally {
       setUploading(false)
     }
@@ -48,8 +47,8 @@ export default function AnalyzePage() {
     try {
       const result = await pasteResume(pasteText)
       router.push(`/results/${result.id}`)
-    } catch (err: any) {
-      setError(err.message || "Paste failed")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Paste failed")
     } finally {
       setPasting(false)
     }
@@ -73,7 +72,7 @@ export default function AnalyzePage() {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-950/30 border border-red-800/50 rounded-xl flex items-start gap-3 animate-slide-up">
+            <div role="alert" className="mb-6 p-4 bg-red-950/30 border border-red-800/50 rounded-xl flex items-start gap-3 animate-slide-up">
               <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
               <span className="text-sm text-red-400">{error}</span>
             </div>
@@ -91,15 +90,24 @@ export default function AnalyzePage() {
               </CardHeader>
               <CardContent>
                 <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload resume file. PDF, DOCX, or TXT supported. Click or press Enter to browse."
                   className={`relative rounded-xl border-2 border-dashed p-16 text-center transition-all duration-300 cursor-pointer overflow-hidden ${
                     dragOver
                       ? "border-emerald-500 bg-emerald-950/30 scale-[1.02]"
-                      : "border-border hover:border-emerald-500/50 hover:bg-emerald-950/20"
+                      : "border-border hover:border-emerald-500/50 hover:bg-emerald-950/20 focus-visible:border-emerald-500 focus-visible:outline-none"
                   }`}
                   onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      fileInputRef.current?.click()
+                    }
+                  }}
                 >
                   <input
                     ref={fileInputRef}
@@ -148,6 +156,7 @@ export default function AnalyzePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea
+                  aria-label="Paste your resume text"
                   placeholder="Paste your full resume text here&#10;&#10;Example:&#10;John Doe&#10;john@example.com&#10;&#10;SKILLS&#10;Python, JavaScript, React&#10;&#10;EXPERIENCE&#10;Senior Developer at Acme Corp (2020-Present)&#10;- Led development of customer-facing web apps&#10;- Improved API response times by 40%"
                   className="min-h-[280px] font-mono text-sm bg-background/50 border-border/50 focus:border-emerald-500/50 transition-colors"
                   value={pasteText}

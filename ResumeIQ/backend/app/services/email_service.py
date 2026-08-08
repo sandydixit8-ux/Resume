@@ -1,11 +1,15 @@
 import smtplib
 import random
 import string
+import hmac
 from email.mime.text import MIMEText
 from datetime import datetime, timezone, timedelta
 from app.config import get_settings
 
 _reset_codes: dict[str, dict] = {}
+
+RESET_CODE_TTL_MINUTES = 15
+RESET_MAX_ATTEMPTS = 5
 
 def send_reset_email(to_email: str) -> str | None:
     settings = get_settings()
@@ -15,7 +19,7 @@ def send_reset_email(to_email: str) -> str | None:
     code = "".join(random.choices(string.digits, k=6))
     msg = MIMEText(
         f"Your ResumeIQ admin password reset code is: {code}\n\n"
-        f"This code expires in 15 minutes.\n\n"
+        f"This code expires in {RESET_CODE_TTL_MINUTES} minutes.\n\n"
         f"If you didn't request this, ignore this email."
     )
     msg["Subject"] = "ResumeIQ Admin - Password Reset Code"
@@ -30,7 +34,11 @@ def send_reset_email(to_email: str) -> str | None:
     except:
         return None
 
-    _reset_codes[to_email] = {"code": code, "expires": datetime.now(timezone.utc) + timedelta(minutes=15)}
+    _reset_codes[to_email] = {
+        "code": code,
+        "expires": datetime.now(timezone.utc) + timedelta(minutes=RESET_CODE_TTL_MINUTES),
+        "attempts": 0,
+    }
     return code
 
 def verify_reset_code(email: str, code: str) -> bool:
@@ -40,7 +48,16 @@ def verify_reset_code(email: str, code: str) -> bool:
     if datetime.now(timezone.utc) > entry["expires"]:
         _reset_codes.pop(email, None)
         return False
-    return entry["code"] == code
+    if entry.get("attempts", 0) >= RESET_MAX_ATTEMPTS:
+        _reset_codes.pop(email, None)
+        return False
+    match = hmac.compare_digest(entry["code"], code)
+    if not match:
+        entry["attempts"] = entry.get("attempts", 0) + 1
+        if entry["attempts"] >= RESET_MAX_ATTEMPTS:
+            _reset_codes.pop(email, None)
+        return False
+    return True
 
 def clear_reset_code(email: str):
     _reset_codes.pop(email, None)

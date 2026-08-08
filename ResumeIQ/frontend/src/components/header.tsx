@@ -5,21 +5,6 @@ import { useState } from "react"
 import { FileText, Menu, X, Shield, Brain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-const navItems = {
-  Product: [
-    { label: "Resume Analyzer", to: "/analyze" },
-    { label: "JD Matching", to: "/jd-match" },
-    { label: "Cover Letter", to: "/cover-letter" },
-    { label: "Resume Builder", to: "/builder" },
-    { label: "Interview Prep", to: "/interview" },
-    { label: "Recruiter", to: "/recruiter" },
-  ],
-  Company: [
-    { label: "Pricing", to: "/pricing" },
-    { label: "Contact", to: "/contact" },
-  ],
-}
-
 export default function Header() {
   const [open, setOpen] = useState(false)
 

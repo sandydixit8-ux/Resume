@@ -1,13 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import { Check, ChevronRight, Loader2, ExternalLink, AlertCircle, Sparkles } from "lucide-react"
+import { Check, ChevronRight, Loader2, AlertCircle, Sparkles } from "lucide-react"
 import { getPaymentConfig, createCheckoutSession, getSubscription, createPortalSession } from "@/lib/api"
 
 const plans = [
@@ -49,17 +48,16 @@ export default function PricingPage() {
   const [email, setEmail] = useState("")
   const [currentPlan, setCurrentPlan] = useState("free")
   const [subStatus, setSubStatus] = useState("inactive")
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [stripeConfigured, setStripeConfigured] = useState(false)
   const [backendPlans, setBackendPlans] = useState<Record<string, { prices: Record<string, number>; period: string; name: string; features: string[] }> | null>(null)
   const [currency, setCurrency] = useState("INR")
   const [currencySymbols, setCurrencySymbols] = useState<Record<string, string>>({ INR: "₹", USD: "$" })
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem("sub_email")
-    if (saved) setEmail(saved)
     ;(async () => {
       try {
         const config = await getPaymentConfig()
@@ -69,6 +67,7 @@ export default function PricingPage() {
         if (config.default_currency) setCurrency(config.default_currency)
         const savedEmail = localStorage.getItem("sub_email")
         if (savedEmail) {
+          setEmail(savedEmail)
           const sub = await getSubscription(savedEmail)
           setCurrentPlan(sub.plan)
           setSubStatus(sub.status)
@@ -103,11 +102,11 @@ export default function PricingPage() {
       window.location.href = "mailto:sales@resumeiq.ai?subject=Recruiter%20Plan%20Inquiry"
       return
     }
-    let subEmail = email
+    const subEmail = email
     if (!subEmail) {
-      subEmail = prompt("Enter your email to start the Pro plan:") || ""
-      if (!subEmail) return
-      setEmail(subEmail)
+      setShowEmailPrompt(true)
+      setActionLoading(null)
+      return
     }
     setActionLoading(planId)
     setError(null)
@@ -117,13 +116,13 @@ export default function PricingPage() {
       if (result.demo) {
         setCurrentPlan("pro")
         setSubStatus("active")
-        setActionLoading(null)
       } else if (result.url) {
         window.location.href = result.url
+        return
       }
-    } catch (err: any) {
-      setError(err.message || "Checkout failed")
-    } finally { if (!stripeConfigured) setActionLoading(null) }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Checkout failed")
+    } finally { setActionLoading(null) }
   }
 
   async function handleManageSubscription() {
@@ -140,8 +139,8 @@ export default function PricingPage() {
       } else if (result.url) {
         window.location.href = result.url
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to open portal")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to open portal")
     } finally { setActionLoading(null) }
   }
 
@@ -189,6 +188,35 @@ export default function PricingPage() {
               <div className="max-w-md mx-auto mb-8 p-3 bg-red-950/30 border border-red-800/50 rounded-lg flex items-start gap-2 text-sm">
                 <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
                 <span className="text-red-400">{error}</span>
+              </div>
+            )}
+
+            {showEmailPrompt && (
+              <div className="max-w-md mx-auto mb-8 p-5 bg-muted/40 border border-emerald-800/30 rounded-xl" role="dialog" aria-labelledby="email-prompt-title">
+                <p id="email-prompt-title" className="font-semibold mb-1">Start the Pro plan</p>
+                <p className="text-xs text-muted-foreground mb-3">Enter your email to create your checkout session. We&apos;ll send your subscription details there.</p>
+                <form
+                  onSubmit={(e) => { e.preventDefault(); setShowEmailPrompt(false); handleCheckout("pro") }}
+                  className="space-y-3"
+                >
+                  <label htmlFor="checkout-email" className="sr-only">Email address</label>
+                  <input
+                    id="checkout-email"
+                    type="email"
+                    required
+                    autoFocus
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+                  />
+                  <div className="flex gap-2">
+                    <Button type="submit" className="flex-1 bg-gradient-brand hover:opacity-90 text-white glow-brand">
+                      <ChevronRight className="mr-2 h-4 w-4" /> Continue to Checkout
+                    </Button>
+                    <Button type="button" variant="outline" className="border-border" onClick={() => setShowEmailPrompt(false)}>Cancel</Button>
+                  </div>
+                </form>
               </div>
             )}
 
@@ -245,7 +273,7 @@ export default function PricingPage() {
 
             {isActive && (
               <div className="max-w-md mx-auto mb-12 p-4 bg-emerald-950/20 border border-emerald-800/30 rounded-xl text-center">
-                <p className="text-emerald-300 font-medium mb-1">You're on the <span className="font-bold capitalize">{currentPlan}</span> plan</p>
+                <p className="text-emerald-300 font-medium mb-1">You&apos;re on the <span className="font-bold capitalize">{currentPlan}</span> plan</p>
                 <p className="text-xs text-muted-foreground">{email || "No email set"}</p>
               </div>
             )}

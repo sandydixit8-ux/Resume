@@ -1,16 +1,21 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.resume import Resume
 from app.models.analysis import CoverLetter
 from app.services.cover_letter import CoverLetterService
+from app.api.deps import SESSION_TOKEN_HEADER, require_owner
 
 router = APIRouter(tags=["Cover Letter"])
 
 
 @router.post("")
-def generate_cover_letter(request: dict, db: Session = Depends(get_db)):
+def generate_cover_letter(
+    request: dict,
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
     resume_id = request.get("resume_id")
     jd_text = request.get("jd_text", "")
     jd_title = request.get("jd_title", "")
@@ -21,6 +26,7 @@ def generate_cover_letter(request: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="resume_id is required")
     if not jd_text.strip():
         raise HTTPException(status_code=400, detail="jd_text is required")
+    require_owner(db, resume_id, x_session_token)
     resume = db.query(Resume).filter(Resume.id == resume_id).first()
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -42,10 +48,15 @@ def generate_cover_letter(request: dict, db: Session = Depends(get_db)):
 
 
 @router.get("/{cover_letter_id}")
-def get_cover_letter(cover_letter_id: int, db: Session = Depends(get_db)):
+def get_cover_letter(
+    cover_letter_id: int,
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
     cl = db.query(CoverLetter).filter(CoverLetter.id == cover_letter_id).first()
     if not cl:
         raise HTTPException(status_code=404, detail="Cover letter not found")
+    require_owner(db, cl.resume_id, x_session_token)
     return {
         "id": cl.id, "resume_id": cl.resume_id, "content": cl.content,
         "tone": cl.tone, "length": cl.length, "company_name": cl.company_name,
@@ -54,6 +65,11 @@ def get_cover_letter(cover_letter_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/by-resume/{resume_id}")
-def list_cover_letters(resume_id: int, db: Session = Depends(get_db)):
+def list_cover_letters(
+    resume_id: int,
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
+    require_owner(db, resume_id, x_session_token)
     letters = db.query(CoverLetter).filter(CoverLetter.resume_id == resume_id).order_by(CoverLetter.created_at.desc()).all()
     return [{"id": l.id, "resume_id": l.resume_id, "tone": l.tone, "length": l.length, "company_name": l.company_name, "role_name": l.role_name, "created_at": l.created_at.isoformat() if l.created_at else None} for l in letters]

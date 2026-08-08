@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import Header from "@/components/header"
+import Footer from "@/components/footer"
 import { submitContact } from "@/lib/api"
 
 const CONTACT_EMAIL = "ridhyanshtechinfra@gmail.com"
@@ -51,7 +53,9 @@ export default function ContactPage() {
   }
 
   return (
-    <main id="main-content" className="pt-24 pb-20 relative overflow-hidden">
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <main id="main-content" className="flex-1 pt-24 pb-20 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-cyan-950/5 via-transparent to-emerald-950/5 pointer-events-none" />
       <div className="container mx-auto px-4 relative">
         <div className="text-center mb-4">
@@ -162,6 +166,8 @@ export default function ContactPage() {
           </Card>
         </div>
       </div>
-    </main>
+      </main>
+      <Footer />
+    </div>
   )
 }

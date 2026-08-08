@@ -13,12 +13,18 @@ import {
 } from "lucide-react"
 import { matchJD } from "@/lib/api"
 
+type JdMatchResult = {
+  match_score: number
+  matched_keywords?: { skill: string }[]
+  hard_requirements?: { skill: string }[]
+}
+
 export default function JDMatchPage() {
   const [resumeId, setResumeId] = useState("")
   const [jdText, setJdText] = useState("")
   const [jdTitle, setJdTitle] = useState("")
   const [jdCompany, setJdCompany] = useState("")
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<JdMatchResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,7 +34,7 @@ export default function JDMatchPage() {
     try {
       const r = await matchJD(Number(resumeId), jdText, jdTitle, jdCompany)
       setResult(r)
-    } catch (err: any) { setError(err.message) }
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     finally { setLoading(false) }
   }
 
@@ -58,18 +64,20 @@ export default function JDMatchPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Resume ID</label>
+                <label htmlFor="jd-resume-id" className="text-sm font-medium mb-1 block">Resume ID</label>
                 <input
+                  id="jd-resume-id"
                   className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
                   placeholder="Enter the resume ID from analysis (or go to Analyze first)"
                   value={resumeId}
                   onChange={(e) => setResumeId(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Job Title</label>
+                  <label htmlFor="jd-title" className="text-sm font-medium mb-1 block">Job Title</label>
                   <input
+                    id="jd-title"
                     className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
                     placeholder="e.g. Senior Software Engineer"
                     value={jdTitle}
@@ -77,8 +85,9 @@ export default function JDMatchPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Company</label>
+                  <label htmlFor="jd-company" className="text-sm font-medium mb-1 block">Company</label>
                   <input
+                    id="jd-company"
                     className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
                     placeholder="e.g. Acme Corp"
                     value={jdCompany}
@@ -86,12 +95,16 @@ export default function JDMatchPage() {
                   />
                 </div>
               </div>
-              <Textarea
-                placeholder="Paste the full job description here..."
-                className="min-h-[200px] bg-background/50"
-                value={jdText}
-                onChange={(e) => setJdText(e.target.value)}
-              />
+              <div>
+                <label htmlFor="jd-text" className="text-sm font-medium mb-1 block">Job Description</label>
+                <Textarea
+                  id="jd-text"
+                  placeholder="Paste the full job description here..."
+                  className="min-h-[200px] bg-background/50"
+                  value={jdText}
+                  onChange={(e) => setJdText(e.target.value)}
+                />
+              </div>
               <Button onClick={handleMatch} disabled={!jdText.trim() || !resumeId.trim() || loading} className="w-full bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
                 {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Matching...</> : <><Sparkles className="mr-2 h-4 w-4" /> Analyze Match</>}
               </Button>
@@ -103,7 +116,7 @@ export default function JDMatchPage() {
           </Card>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-950/30 border border-red-800/50 rounded-xl flex items-start gap-3">
+            <div role="alert" className="mb-6 p-4 bg-red-950/30 border border-red-800/50 rounded-xl flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
               <span className="text-sm text-red-400">{error}</span>
             </div>
@@ -136,7 +149,7 @@ export default function JDMatchPage() {
               </Card>
 
               <div className="grid md:grid-cols-2 gap-6">
-                {result.matched_keywords?.length > 0 && (
+                {result.matched_keywords?.length ? (
                   <Card className="border-0 bg-gradient-to-br from-emerald-950/30 to-teal-950/20">
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center gap-2 text-emerald-400">
@@ -146,14 +159,14 @@ export default function JDMatchPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
-                        {result.matched_keywords.map((k: any, i: number) => (
+                        {result.matched_keywords.map((k, i: number) => (
                           <Badge key={i} className="bg-emerald-900/40 text-emerald-400 border-0">{k.skill}</Badge>
                         ))}
                       </div>
                     </CardContent>
                   </Card>
-                )}
-                {result.hard_requirements?.length > 0 && (
+                ) : null}
+                {result.hard_requirements?.length ? (
                   <Card className="border-0 bg-gradient-to-br from-red-950/30 to-rose-950/20">
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center gap-2 text-red-400">
@@ -163,13 +176,13 @@ export default function JDMatchPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
-                        {result.hard_requirements.map((r: any, i: number) => (
+                        {result.hard_requirements.map((r, i: number) => (
                           <Badge key={i} className="bg-red-900/40 text-red-400 border-0">{r.skill}</Badge>
                         ))}
                       </div>
                     </CardContent>
                   </Card>
-                )}
+                ) : null}
               </div>
 
               <div className="text-center">

@@ -1,11 +1,10 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import { Users, Search, BarChart3, ArrowRight, Check } from "lucide-react"
+import { Users, Search, BarChart3 } from "lucide-react"
 import Link from "next/link"
 
 const features = [

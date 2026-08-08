@@ -4,6 +4,7 @@ All exporters take the same parsed resume dict (from resume.parsed_json) plus
 optional country rules, and return bytes + a filename.
 """
 
+import html
 import io
 import json
 import xml.etree.ElementTree as ET
@@ -163,13 +164,13 @@ def to_docx(parsed: dict, country_code: str = "us") -> bytes:
 # ---------------------------------------------------------------------------
 
 def to_html(parsed: dict, country_code: str = "us", template: str = "professional") -> str:
-    name = _name(parsed)
-    contact = _contact_lines(parsed)
+    name = html.escape(_name(parsed))
+    contact = [html.escape(line) for line in _contact_lines(parsed)]
     accent = {"modern": "#2563eb", "executive": "#b45309", "creative": "#db2777", "technology": "#0f172a"}.get(template, "#1f2937")
     body = []
     for title, content in _sections(parsed, country_code):
-        body.append(f"<h2>{title}</h2>")
-        body.append("<ul>" + "".join(f"<li>{item}</li>" for item in content) + "</ul>")
+        body.append(f"<h2>{html.escape(title)}</h2>")
+        body.append("<ul>" + "".join(f"<li>{html.escape(item)}</li>" for item in content) + "</ul>")
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>{name}</title>
 <style>
 body{{font-family:Georgia,serif;max-width:750px;margin:30px auto;color:#111;line-height:1.5}}
@@ -316,15 +317,15 @@ def to_pdf(parsed: dict, country_code: str = "us") -> bytes:
     bullet_style = ParagraphStyle("Bullet", parent=styles["Normal"], fontSize=10.5,
                                   leftIndent=12, spaceAfter=2)
 
-    story = [Paragraph(_name(parsed), name_style)]
+    story = [Paragraph(html.escape(_name(parsed)), name_style)]
     contact = _contact_lines(parsed)
     if contact:
-        story.append(Paragraph(" | ".join(contact), contact_style))
+        story.append(Paragraph(html.escape(" | ".join(contact)), contact_style))
     for title, content in _sections(parsed, country_code):
         story.append(HRFlowable(width="100%", thickness=0.6, color=colors.HexColor("#e5e7eb"), spaceBefore=8, spaceAfter=2))
-        story.append(Paragraph(title, h2_style))
+        story.append(Paragraph(html.escape(title), h2_style))
         for item in content:
-            story.append(Paragraph(item, bullet_style))
+            story.append(Paragraph(html.escape(item), bullet_style))
     doc.build(story)
     return buf.getvalue()
 

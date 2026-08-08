@@ -87,23 +87,27 @@ def test_export_unknown_format_raises():
 
 
 def test_ai_endpoints_via_api():
+    session = {"X-Session-Token": "test-session-token"}
+
     client = TestClient(app)
-    resp = client.post("/api/v1/resume/paste", data={"text": "\n".join([
-        "Sandeep Kumar", "SUMMARY", "Data scientist with Python skills.",
-        "SKILLS", "Python, SQL, AWS", "EXPERIENCE", "Data Scientist", "Acme",
-        "Jan 2020 - Dec 2024", "- Responsible for building models",
-    ])})
+    resp = client.post("/api/v1/resume/paste", data={
+        "text": "\n".join([
+            "Sandeep Kumar", "SUMMARY", "Data scientist with Python skills.",
+            "SKILLS", "Python, SQL, AWS", "EXPERIENCE", "Data Scientist", "Acme",
+            "Jan 2020 - Dec 2024", "- Responsible for building models",
+        ]),
+    }, headers=session)
     assert resp.status_code == 200
     rid = resp.json()["id"]
     assert client.get("/api/v1/countries").json()["countries"]
     assert client.get("/api/v1/ai/status").status_code == 200
-    ach = client.post(f"/api/v1/ai/achievements/{rid}", json={})
+    ach = client.post(f"/api/v1/ai/achievements/{rid}", json={}, headers=session)
     assert ach.status_code == 200
     assert "achievements" in ach.json()
-    assert client.post(f"/api/v1/ai/summary/{rid}", json={}).status_code == 200
-    assert client.post(f"/api/v1/ai/skills/{rid}", json={}).status_code == 200
-    assert client.post(f"/api/v1/ai/improve/{rid}", json={}).status_code == 200
-    assert client.post(f"/api/v1/ai/linkedin/{rid}", json={}).status_code == 200
-    exp = client.post("/api/v1/export", json={"format": "pdf", "country": "ae", "resume_id": rid})
+    assert client.post(f"/api/v1/ai/summary/{rid}", json={}, headers=session).status_code == 200
+    assert client.post(f"/api/v1/ai/skills/{rid}", json={}, headers=session).status_code == 200
+    assert client.post(f"/api/v1/ai/improve/{rid}", json={}, headers=session).status_code == 200
+    assert client.post(f"/api/v1/ai/linkedin/{rid}", json={}, headers=session).status_code == 200
+    exp = client.post("/api/v1/export", json={"format": "pdf", "country": "ae", "resume_id": rid}, headers=session)
     assert exp.status_code == 200
     assert exp.headers["content-type"] == "application/pdf"

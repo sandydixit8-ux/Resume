@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -28,8 +28,8 @@ export default function ForgotPasswordPage() {
         throw new Error(data.detail || "Failed")
       }
       setSent(true)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send reset code")
     } finally { setLoading(false) }
   }
 

@@ -18,16 +18,16 @@ export default function AnimatedCounter({ target, duration = 1600, prefix = "", 
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    setValue(0)
     if (typeof IntersectionObserver === "undefined") {
-      setValue(target)
-      return
+      const raf = requestAnimationFrame(() => setValue(target))
+      return () => cancelAnimationFrame(raf)
     }
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting && !started.current) {
             started.current = true
+            setValue(0)
             const start = performance.now()
             const tick = (now: number) => {
               const progress = Math.min((now - start) / duration, 1)

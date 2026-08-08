@@ -5,7 +5,7 @@ from app.database import Base
 class Analysis(Base):
     __tablename__ = "analyses"
     id = Column(Integer, primary_key=True, index=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False)
+    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False, index=True)
     overall_score = Column(Float, default=0.0)
     category_scores = Column(JSON, nullable=True)
     category_feedback = Column(JSON, nullable=True)
@@ -15,7 +15,7 @@ class Analysis(Base):
 class JDAnalysis(Base):
     __tablename__ = "jd_analyses"
     id = Column(Integer, primary_key=True, index=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False)
+    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False, index=True)
     jd_text = Column(Text, nullable=False)
     jd_title = Column(String(255), nullable=True)
     jd_company = Column(String(255), nullable=True)
@@ -32,8 +32,8 @@ class JDAnalysis(Base):
 class CoverLetter(Base):
     __tablename__ = "cover_letters"
     id = Column(Integer, primary_key=True, index=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False)
-    jd_analysis_id = Column(Integer, ForeignKey("jd_analyses.id"), nullable=True)
+    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False, index=True)
+    jd_analysis_id = Column(Integer, ForeignKey("jd_analyses.id"), nullable=True, index=True)
     content = Column(Text, nullable=False)
     tone = Column(String(50), default="formal")
     length = Column(String(20), default="medium")

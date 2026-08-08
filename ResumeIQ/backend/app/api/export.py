@@ -1,11 +1,12 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.resume import Resume
 from app.services.exporter import export_resume
+from app.api.deps import SESSION_TOKEN_HEADER, require_owner
 
 router = APIRouter(tags=["Export"])
 
@@ -19,12 +20,14 @@ class ExportRequest(BaseModel):
 
 
 @router.post("/export")
-def export_file(request: ExportRequest, db: Session = Depends(get_db)):
+def export_file(
+    request: ExportRequest,
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
     parsed = request.parsed_json
     if parsed is None and request.resume_id is not None:
-        resume = db.query(Resume).filter(Resume.id == request.resume_id).first()
-        if not resume:
-            raise HTTPException(status_code=404, detail="Resume not found")
+        resume = require_owner(db, request.resume_id, x_session_token)
         parsed = json.loads(resume.parsed_json) if resume.parsed_json else {}
     if not parsed:
         raise HTTPException(status_code=400, detail="No resume data provided")

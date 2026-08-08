@@ -15,5 +15,6 @@ class Resume(Base):
     parsing_issues = Column(Text, nullable=True)
     file_type = Column(String(10), nullable=False)
     file_size_bytes = Column(Integer, default=0)
+    owner_token_hash = Column(String(64), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

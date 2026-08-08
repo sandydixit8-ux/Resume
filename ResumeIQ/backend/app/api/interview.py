@@ -1,10 +1,11 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.resume import Resume
 from app.services.interview import InterviewPrepService
 from app.services.resume_parser import ResumeParserService
+from app.api.deps import SESSION_TOKEN_HEADER, require_owner
 
 router = APIRouter(tags=["Interview"])
 
@@ -19,10 +20,13 @@ def get_interview_questions_from_text(request: dict = {}):
     return {"resume_id": None, "questions": questions, "total": len(questions)}
 
 @router.post("/questions/{resume_id}")
-def get_interview_questions(resume_id: int, request: dict = {}, db: Session = Depends(get_db)):
-    resume = db.query(Resume).filter(Resume.id == resume_id).first()
-    if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+def get_interview_questions(
+    resume_id: int,
+    request: dict = {},
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
+    resume = require_owner(db, resume_id, x_session_token)
     parsed_json = json.loads(resume.parsed_json) if resume.parsed_json else {}
     jd_text = request.get("jd_text", None)
     questions = InterviewPrepService.generate_questions(parsed_json, resume.raw_text, jd_text)

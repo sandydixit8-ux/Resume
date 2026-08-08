@@ -1,5 +1,7 @@
 """Resume upload / paste / retrieve / delete (incl. cascade) tests."""
 
+SESSION = {"X-Session-Token": "test-session-token"}
+
 
 def _make_minimal_pdf(text="Sandeep Dixit Software Engineer") -> bytes:
     objs = [
@@ -28,24 +30,26 @@ def test_upload_txt_ok(client):
     r = client.post(
         "/api/v1/resume/upload",
         files={"file": ("resume.txt", b"Software Engineer, Python, React", "text/plain")},
+        headers=SESSION,
     )
     assert r.status_code == 200
     data = r.json()
     assert data["id"] > 0
     assert data["file_type"] == ".txt"
-    client.delete(f"/api/v1/resume/{data['id']}")
+    client.delete(f"/api/v1/resume/{data['id']}", headers=SESSION)
 
 
 def test_upload_pdf_ok(client):
     r = client.post(
         "/api/v1/resume/upload",
         files={"file": ("resume.pdf", _make_minimal_pdf(), "application/pdf")},
+        headers=SESSION,
     )
     assert r.status_code == 200
     data = r.json()
     assert data["file_type"] == ".pdf"
     assert "Sandeep Dixit" in data["raw_text"]
-    client.delete(f"/api/v1/resume/{data['id']}")
+    client.delete(f"/api/v1/resume/{data['id']}", headers=SESSION)
 
 
 def test_upload_doc_rejected(client):
@@ -82,33 +86,35 @@ def test_paste_ok_and_fetch(client):
     r = client.post(
         "/api/v1/resume/paste",
         data={"text": "Sandeep Dixit - Software Engineer with Python, React", "filename": "test.txt"},
+        headers=SESSION,
     )
     assert r.status_code == 200
     rid = r.json()["id"]
-    g = client.get(f"/api/v1/resume/{rid}")
+    g = client.get(f"/api/v1/resume/{rid}", headers=SESSION)
     assert g.status_code == 200
     assert "Sandeep" in g.json()["raw_text"]
-    client.delete(f"/api/v1/resume/{rid}")
+    client.delete(f"/api/v1/resume/{rid}", headers=SESSION)
 
 
 def test_get_resume_not_found(client):
-    assert client.get("/api/v1/resume/999999").status_code == 404
+    assert client.get("/api/v1/resume/999999", headers=SESSION).status_code == 404
 
 
 def test_get_resume_bad_id(client):
-    assert client.get("/api/v1/resume/abc").status_code == 422
+    assert client.get("/api/v1/resume/abc", headers=SESSION).status_code == 422
 
 
 def test_garbage_pdf_returns_422_parse_failure(client):
     r = client.post(
         "/api/v1/resume/upload",
         files={"file": ("resume.pdf", b"%PDF-1.4 this is not a real pdf", "application/pdf")},
+        headers=SESSION,
     )
     assert r.status_code == 422
 
 
 def test_list_resumes(client):
-    r = client.get("/api/v1/resume/")
+    r = client.get("/api/v1/resume/", headers=SESSION)
     assert r.status_code == 200
     assert isinstance(r.json(), list)
 
@@ -117,25 +123,28 @@ def test_delete_cascade_analysis_jd_cover(client):
     r = client.post(
         "/api/v1/resume/paste",
         data={"text": "Software Engineer 5 years Python backend, React frontend", "filename": "cascade.txt"},
+        headers=SESSION,
     )
     assert r.status_code == 200
     rid = r.json()["id"]
 
-    a = client.post(f"/api/v1/analyze/{rid}")
+    a = client.post(f"/api/v1/analyze/{rid}", headers=SESSION)
     assert a.status_code == 200
 
     jd = client.post(
         f"/api/v1/jd-match/{rid}",
         json={"jd_text": "Senior Python Engineer with backend experience", "jd_title": "Senior Engineer", "jd_company": "Acme"},
+        headers=SESSION,
     )
     assert jd.status_code == 200
 
     cl = client.post(
         "/api/v1/cover-letter",
         json={"resume_id": rid, "jd_text": "Senior Python Engineer", "jd_title": "Senior Engineer", "company_name": "Acme"},
+        headers=SESSION,
     )
     assert cl.status_code == 200
 
-    d = client.delete(f"/api/v1/resume/{rid}")
+    d = client.delete(f"/api/v1/resume/{rid}", headers=SESSION)
     assert d.status_code == 200
-    assert client.get(f"/api/v1/resume/{rid}").status_code == 404
+    assert client.get(f"/api/v1/resume/{rid}", headers=SESSION).status_code == 404

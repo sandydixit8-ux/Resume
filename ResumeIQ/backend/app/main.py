@@ -1,8 +1,14 @@
+import logging
+import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from app.config import get_settings
 from app.database import init_db
+from app.database import SessionLocal
+from app.models.admin import AdminSetting
+from app.api.admin import _hash_password
 from app.api.resume import router as resume_router
 from app.api.analyze import router as analyze_router
 from app.api.jd_match import router as jd_match_router
@@ -15,13 +21,50 @@ from app.api.contact import router as contact_router
 from app.api.ai import router as ai_router
 from app.api.countries import router as countries_router
 from app.api.export import router as export_router
+from app.logging_config import setup_logging, request_logger
 
 settings = get_settings()
+logger = logging.getLogger("app.main")
+
+
+class AccessLogMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = (time.perf_counter() - start) * 1000
+        rec = logging.LogRecord("app.access", logging.INFO, __file__, 44, "", (), None)
+        request_logger(
+            rec,
+            event="request",
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+            duration_ms=duration_ms,
+        )
+        logger.handle(rec)
+        return response
+
+
+def _migrate_plaintext_admin_password() -> None:
+    """Upgrade any legacy plaintext admin_password row to a PBKDF2 hash."""
+    db = SessionLocal()
+    try:
+        row = db.query(AdminSetting).filter(AdminSetting.key == "admin_password").first()
+        if row and row.value and not row.value.startswith("pbkdf2$"):
+            row.value = _hash_password(row.value)
+            db.commit()
+            logger.info("admin_password row migrated from plaintext to PBKDF2")
+    finally:
+        db.close()
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    setup_logging()
+    settings.validate_production()
     init_db()
+    _migrate_plaintext_admin_password()
+    logger.info("ResumeIQ backend started", extra={"event": "startup", "environment": settings.environment})
     yield
 
 
@@ -50,6 +93,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(AccessLogMiddleware)
 
 
 app.include_router(resume_router, prefix="/api/v1/resume")

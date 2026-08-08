@@ -1,19 +1,22 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.resume import Resume
 from app.models.analysis import Analysis
 from app.services.ats_scorer import ATSScorerService
+from app.api.deps import SESSION_TOKEN_HEADER, hash_session_token, require_owner
 
 router = APIRouter(tags=["Analysis"])
 
 
 @router.post("/{resume_id}")
-def analyze_resume(resume_id: int, db: Session = Depends(get_db)):
-    resume = db.query(Resume).filter(Resume.id == resume_id).first()
-    if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+def analyze_resume(
+    resume_id: int,
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
+    resume = require_owner(db, resume_id, x_session_token)
     parsed_json = json.loads(resume.parsed_json) if resume.parsed_json else {}
     parsing_issues = json.loads(resume.parsing_issues) if resume.parsing_issues else []
     parsed_result = {"raw_text": resume.raw_text, "parsed_json": parsed_json, "parsing_issues": parsing_issues, "file_size": resume.file_size_bytes}
@@ -40,7 +43,12 @@ def analyze_resume(resume_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{resume_id}")
-def get_analysis(resume_id: int, db: Session = Depends(get_db)):
+def get_analysis(
+    resume_id: int,
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
+    require_owner(db, resume_id, x_session_token)
     analysis = db.query(Analysis).filter(Analysis.resume_id == resume_id).order_by(Analysis.created_at.desc()).first()
     if not analysis:
         raise HTTPException(status_code=404, detail="No analysis found for this resume")
@@ -56,6 +64,19 @@ def get_analysis(resume_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("")
-def list_analyses(db: Session = Depends(get_db)):
-    analyses = db.query(Analysis).order_by(Analysis.created_at.desc()).limit(50).all()
+def list_analyses(
+    x_session_token: str | None = Header(default=None, alias=SESSION_TOKEN_HEADER),
+    db: Session = Depends(get_db),
+):
+    if not x_session_token or not x_session_token.strip():
+        raise HTTPException(status_code=401, detail=f"A session token ({SESSION_TOKEN_HEADER} header) is required")
+    token_hash = hash_session_token(x_session_token.strip())
+    analyses = (
+        db.query(Analysis)
+        .join(Resume, Analysis.resume_id == Resume.id)
+        .filter(Resume.owner_token_hash == token_hash)
+        .order_by(Analysis.created_at.desc())
+        .limit(50)
+        .all()
+    )
     return [{"id": a.id, "resume_id": a.resume_id, "overall_score": a.overall_score, "created_at": a.created_at.isoformat() if a.created_at else None} for a in analyses]

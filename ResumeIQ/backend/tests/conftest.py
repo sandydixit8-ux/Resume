@@ -44,3 +44,12 @@ def auth_headers(client: TestClient) -> dict:
         "/api/v1/admin/login", json={"username": "admin", "password": "admin123"}
     )
     return {"Authorization": f"Bearer {r.json()['token']}"}
+
+
+def session_headers(token: str = "test-session-token") -> dict:
+    return {"X-Session-Token": token}
+
+
+@pytest.fixture()
+def session_token() -> str:
+    return "test-session-token"

@@ -39,29 +39,46 @@ const EXPORT_FORMATS = [
   { value: "europass", label: "Europass XML" },
 ]
 
+type SummaryResult = { optimized: string; explanation?: string }
+type AchievementsResult = { achievements?: { section: string; achievement: string; impact: string }[] }
+type SkillsResult = { categories?: Record<string, string[]>; missing?: string[] }
+type RewritesResult = { rewrites?: { section: string; original: string; rewritten: string }[] }
+type LinkedinResult = {
+  headline: string
+  about: string
+  skills?: string[]
+  banner_text: string
+  open_to_work_title: string
+}
+
 function copyText(text: string) {
   navigator.clipboard?.writeText(text)
 }
 
 export default function AIResumeTools({ resumeId, jdText }: Props) {
   const [busy, setBusy] = useState<string | null>(null)
-  const [summary, setSummary] = useState<any>(null)
-  const [achievements, setAchievements] = useState<any>(null)
-  const [skills, setSkills] = useState<any>(null)
-  const [rewrites, setRewrites] = useState<any>(null)
-  const [linkedin, setLinkedin] = useState<any>(null)
+  const [summary, setSummary] = useState<SummaryResult | null>(null)
+  const [achievements, setAchievements] = useState<AchievementsResult | null>(null)
+  const [skills, setSkills] = useState<SkillsResult | null>(null)
+  const [rewrites, setRewrites] = useState<RewritesResult | null>(null)
+  const [linkedin, setLinkedin] = useState<LinkedinResult | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
 
   const [countries, setCountries] = useState<{ code: string; name: string }[]>([])
   const [country, setCountry] = useState("us")
   const [exportBusy, setExportBusy] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const jd = jdText.trim() ? jdText : undefined
 
-  async function run(key: string, fn: () => Promise<any>, setter: (v: any) => void) {
+  async function run<T>(key: string, fn: () => Promise<T>, setter: (v: T) => void) {
     setBusy(key)
+    setAiError(null)
     try {
       setter(await fn())
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "AI request failed. Please try again.")
     } finally {
       setBusy(null)
     }
@@ -83,6 +100,7 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
 
   async function handleExport(format: string) {
     setExportBusy(true)
+    setExportError(null)
     try {
       const { blob, filename } = await exportResume({
         format,
@@ -96,8 +114,8 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
       a.download = filename
       a.click()
       URL.revokeObjectURL(url)
-    } catch (e: any) {
-      alert(e.message || "Export failed")
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "Export failed. Please try again.")
     } finally {
       setExportBusy(false)
     }
@@ -114,6 +132,11 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
           <CardDescription>Optimize your resume with AI assistance. Results use your job description context when provided above.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {aiError && (
+            <p role="alert" className="text-sm text-red-400 bg-red-950/20 border border-red-800/30 rounded-lg px-3 py-2">
+              {aiError}
+            </p>
+          )}
           {/* Summary */}
           <div className="p-4 rounded-xl bg-muted/40 border border-border/50">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -121,7 +144,7 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
                 <p className="font-semibold">Professional Summary Optimizer</p>
                 <p className="text-xs text-muted-foreground">Rewrite your summary to be keyword-rich and impact-driven.</p>
               </div>
-              <Button size="sm" onClick={() => run("summary", () => aiSummary(resumeId, jd), setSummary)} disabled={busy === "summary"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
+              <Button size="sm" onClick={() => run<SummaryResult>("summary", () => aiSummary(resumeId, jd), setSummary)} disabled={busy === "summary"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
                 {busy === "summary" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Working...</> : <><Sparkles className="mr-2 h-4 w-4" /> Optimize Summary</>}
               </Button>
             </div>
@@ -146,13 +169,13 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
                 <p className="font-semibold">AI Achievement Writer</p>
                 <p className="text-xs text-muted-foreground">Turn &ldquo;responsible for&rdquo; statements into quantified achievements.</p>
               </div>
-              <Button size="sm" onClick={() => run("ach", () => aiAchievements(resumeId, jd), setAchievements)} disabled={busy === "ach"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
+              <Button size="sm" onClick={() => run<AchievementsResult>("ach", () => aiAchievements(resumeId, jd), setAchievements)} disabled={busy === "ach"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
                 {busy === "ach" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Working...</> : <><Sparkles className="mr-2 h-4 w-4" /> Write Achievements</>}
               </Button>
             </div>
-            {achievements && achievements.achievements?.length > 0 && (
+            {achievements && achievements.achievements?.length ? (
               <div className="mt-3 space-y-2">
-                {achievements.achievements.map((a: any, i: number) => (
+                {achievements.achievements.map((a, i: number) => (
                   <div key={i} className="bg-muted/50 p-3 rounded-lg border border-border/50 text-sm">
                     <p className="text-xs text-emerald-400 font-semibold mb-1">{a.section}</p>
                     <p>{a.achievement}</p>
@@ -160,7 +183,7 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Skills */}
@@ -170,13 +193,13 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
                 <p className="font-semibold">AI Skills Engine</p>
                 <p className="text-xs text-muted-foreground">Categorized skill suggestions and missing keywords.</p>
               </div>
-              <Button size="sm" onClick={() => run("skills", () => aiSkills(resumeId, jd), setSkills)} disabled={busy === "skills"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
+              <Button size="sm" onClick={() => run<SkillsResult>("skills", () => aiSkills(resumeId, jd), setSkills)} disabled={busy === "skills"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
                 {busy === "skills" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Working...</> : <><Sparkles className="mr-2 h-4 w-4" /> Suggest Skills</>}
               </Button>
             </div>
             {skills && (
               <div className="mt-3 space-y-3">
-                {skills.categories && Object.entries(skills.categories).filter(([, v]: any) => v?.length).map(([cat, vals]: any) => (
+                {skills.categories && Object.entries(skills.categories).filter(([, v]) => v.length).map(([cat, vals]) => (
                   <div key={cat}>
                     <p className="text-xs text-muted-foreground font-medium mb-1">{cat}</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -184,14 +207,14 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
                     </div>
                   </div>
                 ))}
-                {skills.missing?.length > 0 && (
+                {skills.missing?.length ? (
                   <div>
                     <p className="text-xs text-amber-400 font-medium mb-1">Missing from JD:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {skills.missing.map((s: string, i: number) => <Badge key={i} className="bg-amber-900/40 text-amber-400 border-0">{s}</Badge>)}
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
           </div>
@@ -203,13 +226,13 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
                 <p className="font-semibold">AI Experience Rewrite</p>
                 <p className="text-xs text-muted-foreground">Rewrite your experience bullets to be action-first and ATS-friendly.</p>
               </div>
-              <Button size="sm" onClick={() => run("imp", () => aiImprove(resumeId, jd), setRewrites)} disabled={busy === "imp"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
+              <Button size="sm" onClick={() => run<RewritesResult>("imp", () => aiImprove(resumeId, jd), setRewrites)} disabled={busy === "imp"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
                 {busy === "imp" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Working...</> : <><Sparkles className="mr-2 h-4 w-4" /> Rewrite Experience</>}
               </Button>
             </div>
-            {rewrites && rewrites.rewrites?.length > 0 && (
+            {rewrites && rewrites.rewrites?.length ? (
               <div className="mt-3 space-y-2">
-                {rewrites.rewrites.map((r: any, i: number) => (
+                {rewrites.rewrites.map((r, i: number) => (
                   <div key={i} className="bg-muted/50 p-3 rounded-lg border border-border/50 text-sm">
                     <p className="text-xs text-emerald-400 font-semibold mb-1">{r.section}</p>
                     <p className="text-xs text-muted-foreground">Before: <span className="line-through">{r.original}</span></p>
@@ -217,7 +240,7 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* LinkedIn */}
@@ -227,7 +250,7 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
                 <p className="font-semibold flex items-center gap-1.5"><Briefcase className="h-4 w-4 text-sky-400" /> LinkedIn Optimization</p>
                 <p className="text-xs text-muted-foreground">Headline, about, skills and banner text optimized for recruiter search.</p>
               </div>
-              <Button size="sm" onClick={() => run("li", () => aiLinkedin(resumeId, jd), setLinkedin)} disabled={busy === "li"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
+              <Button size="sm" onClick={() => run<LinkedinResult>("li", () => aiLinkedin(resumeId, jd), setLinkedin)} disabled={busy === "li"} className="bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
                 {busy === "li" ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Working...</> : <><Sparkles className="mr-2 h-4 w-4" /> Generate LinkedIn Profile</>}
               </Button>
             </div>
@@ -293,6 +316,11 @@ export default function AIResumeTools({ resumeId, jdText }: Props) {
               </Button>
             ))}
           </div>
+          {exportError && (
+            <p role="alert" className="text-sm text-red-400 bg-red-950/20 border border-red-800/30 rounded-lg px-3 py-2">
+              {exportError}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

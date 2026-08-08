@@ -305,6 +305,13 @@ body {
   background: linear-gradient(135deg, #2cc5dd, #67e8f9);
 }
 
+/* WCAG AA contrast: white on #2fc67f/#2cc5dd is ~2.1:1 (fails AA). Dark text
+   on these bright gradients passes ~6.7:1. Overrides any text-white utility. */
+.bg-gradient-brand,
+.bg-gradient-cyan {
+  color: #052e22 !important;
+}
+
 .glow-brand {
   box-shadow: 0 0 40px rgba(47, 198, 127, 0.25);
 }

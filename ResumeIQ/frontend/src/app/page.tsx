@@ -11,8 +11,8 @@ import { getPaymentConfig } from "@/lib/api"
 import Reveal from "@/components/reveal"
 import AnimatedCounter from "@/components/animated-counter"
 import {
-  ArrowRight, Sparkles, FileText, Search, Edit, FileCheck, Target, Zap, ChevronRight,
-  Check, Brain, BarChart3, Upload, TrendingUp, Download,
+  ArrowRight, Sparkles, FileText, Search, Edit, FileCheck, Target, ChevronRight,
+  Check, Brain, Upload, TrendingUp, Download,
 } from "lucide-react"
 
 const features = [

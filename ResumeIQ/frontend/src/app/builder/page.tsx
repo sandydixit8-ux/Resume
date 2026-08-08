@@ -329,7 +329,6 @@ const templates: Template[] = [
   },
 ]
 
-const inputCls = "flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
 const labelCls = "text-xs font-medium text-muted-foreground mb-1 block"
 
 function BuilderInner() {
@@ -338,8 +337,9 @@ function BuilderInner() {
   const [data, setData] = useState<ResumeData>(emptyData)
   const [loadingResume, setLoadingResume] = useState(false)
   const [countries, setCountries] = useState<{ code: string; name: string; fields: string[] }[]>([])
-  const [countryInfo, setCountryInfo] = useState<Record<string, any> | null>(null)
+  const [countryInfo, setCountryInfo] = useState<{ tips?: string; fields?: string[]; photo?: string } | null>(null)
   const [exporting, setExporting] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   useEffect(() => {
     getCountries().then((r) => setCountries(r.countries || [])).catch(() => {})
@@ -353,7 +353,7 @@ function BuilderInner() {
   useEffect(() => {
     const resumeId = searchParams.get("resume_id")
     if (resumeId) {
-      setLoadingResume(true)
+      queueMicrotask(() => setLoadingResume(true))
       getResume(Number(resumeId)).then((r) => {
         const p = r.parsed_json || {}
         const personal = p.personal || {}
@@ -373,10 +373,10 @@ function BuilderInner() {
           ),
           summary: p.summary || "",
           skills: (p.skills || []).join(", "),
-          certifications: (p.certifications || []).map((c: any) => (typeof c === "string" ? c : c.name || "")).join(", "),
-          experience: (p.experience || []).map((e: any) => ({ title: e.title || "", company: e.company || "", dates: e.dates || "", bullets: e.bullets || [] })),
-          education: (p.education || []).map((e: any) => ({ institution: e.institution || "", degree: e.degree || "", dates: e.dates || "" })),
-          projects: (p.projects || []).map((pr: any) => ({ name: pr.title || pr.name || "", description: (pr.bullets || []).join(" ") || "", link: "" })),
+          certifications: (p.certifications || []).map((c: string | { name?: string }) => (typeof c === "string" ? c : c.name || "")).join(", "),
+          experience: (p.experience || []).map((e: { title?: string; company?: string; dates?: string; bullets?: string[] }) => ({ title: e.title || "", company: e.company || "", dates: e.dates || "", bullets: e.bullets || [] })),
+          education: (p.education || []).map((e: { institution?: string; degree?: string; dates?: string }) => ({ institution: e.institution || "", degree: e.degree || "", dates: e.dates || "" })),
+          projects: (p.projects || []).map((pr: { title?: string; name?: string; bullets?: string[] }) => ({ name: pr.title || pr.name || "", description: (pr.bullets || []).join(" ") || "", link: "" })),
         })
       }).catch(() => {}).finally(() => setLoadingResume(false))
     }
@@ -393,16 +393,16 @@ function BuilderInner() {
   function setInt(key: string, value: string) {
     setData((d) => ({ ...d, international: { ...d.international, [key]: value } }))
   }
-  function setExp(i: number, key: keyof Experience, value: any) {
+  function setExp(i: number, key: keyof Experience, value: string | string[]) {
     setData((d) => ({ ...d, experience: d.experience.map((e, j) => (j === i ? { ...e, [key]: value } : e)) }))
   }
   function setBullet(expIdx: number, bIdx: number, value: string) {
     setData((d) => ({ ...d, experience: d.experience.map((e, j) => (j === expIdx ? { ...e, bullets: e.bullets.map((b, k) => (k === bIdx ? value : b)) } : e)) }))
   }
-  function setEdu(i: number, key: keyof Education, value: any) {
+  function setEdu(i: number, key: keyof Education, value: string) {
     setData((d) => ({ ...d, education: d.education.map((e, j) => (j === i ? { ...e, [key]: value } : e)) }))
   }
-  function setProj(i: number, key: keyof Project, value: any) {
+  function setProj(i: number, key: keyof Project, value: string) {
     setData((d) => ({ ...d, projects: d.projects.map((e, j) => (j === i ? { ...e, [key]: value } : e)) }))
   }
 
@@ -460,18 +460,28 @@ function BuilderInner() {
   }
 
   function downloadResume() {
+    if (!hasAnyData(data)) {
+      setExportError("Add at least one detail (e.g. your name or a job title) before downloading.")
+      return
+    }
+    setExportError(null)
     const blob = new Blob([buildHtml()], { type: "text/html" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `${(effectiveData(data).name || "Resume").replace(/\s+/g, "_")}_resume.html`
+    a.download = `${(data.name || "Resume").replace(/\s+/g, "_")}_resume.html`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   function printResume() {
+    if (!hasAnyData(data)) {
+      setExportError("Add at least one detail (e.g. your name or a job title) before printing.")
+      return
+    }
+    setExportError(null)
     const win = window.open("", "_blank", "width=900,height=1100")
-    if (!win) { alert("Please allow pop-ups to print your resume."); return }
+    if (!win) { setExportError("Please allow pop-ups to print your resume."); return }
     win.document.write(buildHtml())
     win.document.close()
     win.focus()
@@ -480,13 +490,18 @@ function BuilderInner() {
 
   async function doExport(format: string) {
     if (exporting) return
+    if (!hasAnyData(data)) {
+      setExportError("Add at least one detail (e.g. your name or a job title) before exporting.")
+      return
+    }
+    setExportError(null)
     setExporting(format)
     try {
       const { blob, filename } = await exportResume({
         format,
         country: data.country || "us",
         template: selected,
-        parsed_json: toParsedJson(effectiveData(data)),
+        parsed_json: toParsedJson(data),
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -495,7 +510,7 @@ function BuilderInner() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      alert("Export failed: " + (e instanceof Error ? e.message : String(e)))
+      setExportError("Export failed: " + (e instanceof Error ? e.message : String(e)))
     } finally {
       setExporting(null)
     }
@@ -679,7 +694,7 @@ function BuilderInner() {
               <CardContent className="space-y-5">
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5"><User className="h-3 w-3" /> Personal Info</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="col-span-2"><label className={labelCls}>Full Name</label><Input value={data.name} onChange={(e) => set("name", e.target.value)} placeholder="John Doe" /></div>
                     <div className="col-span-2"><label className={labelCls}>Professional Title</label><Input value={data.title} onChange={(e) => set("title", e.target.value)} placeholder="Senior Software Engineer" /></div>
                     <div><label className={labelCls}>Email</label><Input value={data.email} onChange={(e) => set("email", e.target.value)} placeholder="john@email.com" /></div>
@@ -691,7 +706,7 @@ function BuilderInner() {
 
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5"><Globe className="h-3 w-3" /> Country &amp; International</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="col-span-2">
                       <label className={labelCls}>Target Country</label>
                       <Select
@@ -710,7 +725,7 @@ function BuilderInner() {
                     </p>
                   )}
                   {(countryInfo?.fields || []).filter((f: string) => f !== "photo").length > 0 && (
-                    <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       {(countryInfo?.fields || []).filter((f: string) => f !== "photo").map((f: string) => (
                         <div key={f} className={f === "languages" ? "col-span-2" : ""}>
                           <label className={labelCls}>{INTL_FIELDS[f] || f}</label>
@@ -751,7 +766,7 @@ function BuilderInner() {
                   {data.experience.map((e, i) => (
                     <div key={i} className="p-3 rounded-lg border border-border/50 bg-muted/30 space-y-2 relative">
                       <button className="absolute top-2 right-2 text-muted-foreground hover:text-red-400" onClick={() => set("experience", data.experience.filter((_, j) => j !== i))}><Trash2 className="h-3.5 w-3.5" /></button>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <Input value={e.title} onChange={(ev) => setExp(i, "title", ev.target.value)} placeholder="Job title" />
                         <Input value={e.company} onChange={(ev) => setExp(i, "company", ev.target.value)} placeholder="Company" />
                       </div>
@@ -780,7 +795,7 @@ function BuilderInner() {
                     <div key={i} className="p-3 rounded-lg border border-border/50 bg-muted/30 space-y-2 relative">
                       <button className="absolute top-2 right-2 text-muted-foreground hover:text-red-400" onClick={() => set("education", data.education.filter((_, j) => j !== i))}><Trash2 className="h-3.5 w-3.5" /></button>
                       <Input value={e.institution} onChange={(ev) => setEdu(i, "institution", ev.target.value)} placeholder="University / School" />
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <Input value={e.degree} onChange={(ev) => setEdu(i, "degree", ev.target.value)} placeholder="B.S. Computer Science" />
                         <Input value={e.dates} onChange={(ev) => setEdu(i, "dates", ev.target.value)} placeholder="2015 - 2019" />
                       </div>
@@ -822,7 +837,7 @@ function BuilderInner() {
                     Showing sample content — fill in your details on the left and it will be replaced automatically.
                   </p>
                 )}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Button onClick={downloadResume} className="bg-gradient-brand hover:opacity-90 text-white glow-brand">
                     <Download className="mr-2 h-4 w-4" /> Download HTML
                   </Button>
@@ -830,6 +845,11 @@ function BuilderInner() {
                     <Printer className="mr-2 h-4 w-4" /> Print / PDF
                   </Button>
                 </div>
+                {exportError && (
+                  <p role="alert" className="text-xs text-red-400 text-center bg-red-950/20 border border-red-800/30 rounded-lg px-3 py-2">
+                    {exportError}
+                  </p>
+                )}
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">Download As</p>
                   <div className="grid grid-cols-4 gap-2">

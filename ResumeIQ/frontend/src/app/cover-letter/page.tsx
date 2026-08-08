@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import Header from "@/components/header"
@@ -19,15 +19,18 @@ export default function CoverLetterPage() {
   const [length, setLength] = useState("medium")
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   async function handleGenerate() {
     if (!jdText.trim() || !resumeId.trim()) return
-    setLoading(true); setContent("")
+    setLoading(true); setContent(""); setError(null)
     try {
       const r = await generateCoverLetter({ resume_id: Number(resumeId), jd_text: jdText, jd_title: jdTitle, company_name: company, tone, length })
       setContent(r.content)
-    } catch { }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate cover letter. Please try again.")
+    }
     finally { setLoading(false) }
   }
 
@@ -62,20 +65,20 @@ export default function CoverLetterPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Resume ID</label>
-                <input className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50" placeholder="Enter resume ID" value={resumeId} onChange={(e) => setResumeId(e.target.value)} />
+                <label htmlFor="cl-resume-id" className="text-sm font-medium mb-1 block">Resume ID</label>
+                <input id="cl-resume-id" className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50" placeholder="Enter resume ID" value={resumeId} onChange={(e) => setResumeId(e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Job Title</label>
-                  <input className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50" placeholder="e.g. Software Engineer" value={jdTitle} onChange={(e) => setJdTitle(e.target.value)} />
+                  <label htmlFor="cl-title" className="text-sm font-medium mb-1 block">Job Title</label>
+                  <input id="cl-title" className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50" placeholder="e.g. Software Engineer" value={jdTitle} onChange={(e) => setJdTitle(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Company</label>
-                  <input className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50" placeholder="e.g. Acme Corp" value={company} onChange={(e) => setCompany(e.target.value)} />
+                  <label htmlFor="cl-company" className="text-sm font-medium mb-1 block">Company</label>
+                  <input id="cl-company" className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50" placeholder="e.g. Acme Corp" value={company} onChange={(e) => setCompany(e.target.value)} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="tone" className="text-sm font-medium mb-1 block">Tone</label>
                   <Select id="tone" options={[{ value: "formal", label: "Formal" }, { value: "conversational", label: "Conversational" }, { value: "enthusiastic", label: "Enthusiastic" }, { value: "executive", label: "Executive" }]} value={tone} onChange={(e) => setTone(e.target.value)} />
@@ -85,10 +88,16 @@ export default function CoverLetterPage() {
                   <Select id="length" options={[{ value: "short", label: "Short" }, { value: "medium", label: "Medium" }, { value: "long", label: "Long" }]} value={length} onChange={(e) => setLength(e.target.value)} />
                 </div>
               </div>
-              <Textarea placeholder="Paste the job description..." className="min-h-[160px] bg-background/50" value={jdText} onChange={(e) => setJdText(e.target.value)} />
+              <div>
+                <label htmlFor="cl-jd-text" className="text-sm font-medium mb-1 block">Job Description</label>
+                <Textarea id="cl-jd-text" placeholder="Paste the job description..." className="min-h-[160px] bg-background/50" value={jdText} onChange={(e) => setJdText(e.target.value)} />
+              </div>
               <Button onClick={handleGenerate} disabled={!jdText.trim() || !resumeId.trim() || loading} className="w-full bg-gradient-brand hover:opacity-90 text-white shadow-lg glow-brand">
                 {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</> : <><Sparkles className="mr-2 h-4 w-4" /> Generate Cover Letter</>}
               </Button>
+              {error && (
+                <p role="alert" className="text-sm text-red-400">{error}</p>
+              )}
             </CardContent>
           </Card>
 
