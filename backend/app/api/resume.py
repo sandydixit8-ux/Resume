@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models.resume import Resume
 from app.models.analysis import Analysis, JDAnalysis, CoverLetter
 from app.services.resume_parser import ResumeParserService
+from app.services.storage import get_storage
 from app.config import get_settings
 from app.api.deps import (
     SESSION_TOKEN_HEADER,
@@ -167,8 +168,11 @@ def delete_resume(
         db.query(CoverLetter).filter(CoverLetter.jd_analysis_id.in_(jd_ids)).delete()
     db.query(JDAnalysis).filter(JDAnalysis.resume_id == resume_id).delete()
     db.query(CoverLetter).filter(CoverLetter.resume_id == resume_id).delete()
-    if resume.file_path and os.path.exists(resume.file_path):
-        os.remove(resume.file_path)
+    if resume.file_path:
+        try:
+            get_storage().delete(resume.file_path)
+        except Exception as e:
+            logger.warning("failed to delete resume file", extra={"resume_id": resume_id, "error": str(e)})
     db.delete(resume)
     db.commit()
     logger.info("resume deleted", extra={"event": "resume_delete", "resume_id": resume_id})

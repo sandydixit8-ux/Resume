@@ -51,6 +51,46 @@ class ResumeParserService:
         return {"raw_text": raw_text, "ats_view_text": ats_view, "parsed_json": parsed, "has_parsing_issues": len(issues) > 0, "parsing_issues": json.dumps(issues)}
 
     @staticmethod
+    def parse_pdf_bytes(data: bytes) -> dict:
+        import io
+        import pdfplumber
+        issues = []
+        text_pages = []
+        page_limit = settings.max_pdf_pages
+        with pdfplumber.open(io.BytesIO(data)) as pdf:
+            if len(pdf.pages) > page_limit:
+                raise ValueError(f"PDF has more than {page_limit} pages")
+            for i, page in enumerate(pdf.pages):
+                page_text = page.extract_text() or ""
+                text_pages.append(page_text)
+                tables = page.find_tables()
+                if tables:
+                    issues.append({"type": "table", "page": i + 1, "detail": f"Table detected at page {i+1}", "severity": "high"})
+                textboxes = page.chars
+                if textboxes:
+                    x_coords = [c["x0"] for c in textboxes]
+                    if x_coords:
+                        unique_x = set(round(x, 0) for x in x_coords)
+                        col_count = sum(1 for x in unique_x if x > 50)
+                        if col_count > 1 and len(text_pages[i]) < 500:
+                            issues.append({"type": "multi_column", "page": i + 1, "detail": f"Possible multi-column on page {i+1}", "severity": "high"})
+                images = page.images
+                if images:
+                    issues.append({"type": "image", "page": i + 1, "detail": f"{len(images)} image(s) on page {i+1}", "severity": "medium"})
+        raw_text = "\n".join(text_pages)
+        max_chars = settings.max_paste_chars
+        if len(raw_text) > max_chars:
+            raise ValueError(f"Extracted text exceeds {max_chars} characters")
+        ats_view = ResumeParserService._simulate_ats_view(text_pages)
+        has_header_footer = ResumeParserService._detect_header_footer(text_pages)
+        if has_header_footer:
+            issues.append({"type": "header_footer", "detail": "Headers/footers detected", "severity": "medium"})
+        font_issues = ResumeParserService._check_font_encoding(raw_text)
+        issues.extend(font_issues)
+        parsed = ResumeParserService._parse_sections(raw_text)
+        return {"raw_text": raw_text, "ats_view_text": ats_view, "parsed_json": parsed, "has_parsing_issues": len(issues) > 0, "parsing_issues": json.dumps(issues)}
+
+    @staticmethod
     def parse_docx(file_path: str) -> dict:
         max_uncompressed = settings.max_docx_uncompressed_mb * 1024 * 1024
         try:
@@ -68,6 +108,40 @@ class ResumeParserService:
         from docx import Document
         issues = []
         doc = Document(file_path)
+        paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        if doc.tables:
+            issues.append({"type": "table", "detail": f"{len(doc.tables)} table(s) detected", "severity": "high"})
+        for para in doc.paragraphs:
+            if para.style.name.startswith("Header"):
+                issues.append({"type": "header_footer", "detail": "Headers detected", "severity": "medium"})
+                break
+        raw_text = "\n".join(paragraphs)
+        max_chars = settings.max_paste_chars
+        if len(raw_text) > max_chars:
+            raise ValueError(f"Extracted text exceeds {max_chars} characters")
+        ats_view = ResumeParserService._simulate_ats_view([raw_text])
+        parsed = ResumeParserService._parse_sections(raw_text)
+        return {"raw_text": raw_text, "ats_view_text": ats_view, "parsed_json": parsed, "has_parsing_issues": len(issues) > 0, "parsing_issues": json.dumps(issues)}
+
+    @staticmethod
+    def parse_docx_bytes(data: bytes) -> dict:
+        import io
+        max_uncompressed = settings.max_docx_uncompressed_mb * 1024 * 1024
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                infos = zf.infolist()
+                if len(infos) > 10_000:
+                    raise ValueError("DOCX contains too many internal entries")
+                total_uncompressed = sum(i.file_size for i in infos)
+                if total_uncompressed > max_uncompressed:
+                    raise ValueError(f"DOCX expands beyond {settings.max_docx_uncompressed_mb} MB when extracted")
+        except ValueError:
+            raise
+        except Exception as e:
+            raise ValueError(f"Invalid DOCX archive: {e}") from e
+        from docx import Document
+        issues = []
+        doc = Document(io.BytesIO(data))
         paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
         if doc.tables:
             issues.append({"type": "table", "detail": f"{len(doc.tables)} table(s) detected", "severity": "high"})
@@ -246,23 +320,37 @@ class ResumeParserService:
 
     @staticmethod
     def save_upload(file_bytes: bytes, filename: str) -> str:
-        upload_dir = Path(settings.upload_dir)
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        fp = upload_dir / filename
-        with open(fp, "wb") as f:
-            f.write(file_bytes)
-        return str(fp)
+        from app.services.storage import get_storage
+
+        return get_storage().save(filename, file_bytes)
 
     @staticmethod
     def parse_file(file_path: str) -> dict:
+        from app.services.storage import get_storage
+
         ext = Path(file_path).suffix.lower()
+        if get_storage().backend_name == "local":
+            if ext == ".pdf":
+                return ResumeParserService.parse_pdf(file_path)
+            elif ext == ".docx":
+                return ResumeParserService.parse_docx(file_path)
+            elif ext == ".txt":
+                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                    text = f.read()
+                return ResumeParserService.parse_text(text)
+            else:
+                raise ValueError(f"Unsupported file type: {ext}")
+        data = get_storage().open_bytes(file_path)
+        return ResumeParserService.parse_file_bytes(data, ext)
+
+    @staticmethod
+    def parse_file_bytes(data: bytes, ext: str) -> dict:
         if ext == ".pdf":
-            return ResumeParserService.parse_pdf(file_path)
+            return ResumeParserService.parse_pdf_bytes(data)
         elif ext == ".docx":
-            return ResumeParserService.parse_docx(file_path)
+            return ResumeParserService.parse_docx_bytes(data)
         elif ext == ".txt":
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                text = f.read()
+            text = data.decode("utf-8", errors="replace")
             return ResumeParserService.parse_text(text)
         else:
             raise ValueError(f"Unsupported file type: {ext}")

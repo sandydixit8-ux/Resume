@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     groq_api_key: str = ""
     upload_dir: str = "./uploads"
+    storage_backend: str = "local"
+    supabase_url: str = ""
+    supabase_service_key: str = ""
+    supabase_storage_bucket: str = "resumes"
     max_upload_mb: int = 10
     max_paste_chars: int = 500_000
     max_pdf_pages: int = 100

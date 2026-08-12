@@ -1,19 +1,24 @@
+from pathlib import Path
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.config import get_settings
 
 settings = get_settings()
 
+_is_sqlite = settings.database_url.startswith("sqlite")
+connect_args = {"check_same_thread": False} if _is_sqlite else {}
+
 engine = create_engine(
     settings.database_url,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
+    connect_args=connect_args,
     echo=False,
 )
 
 
 @event.listens_for(engine, "connect")
 def _set_sqlite_pragma(dbapi_connection, connection_record):
-    if "sqlite" in settings.database_url:
+    if _is_sqlite:
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA foreign_keys=ON")
@@ -73,12 +78,44 @@ def _ensure_indexes():
             conn.execute(text("CREATE INDEX ix_cover_letters_jd_analysis_id ON cover_letters (jd_analysis_id)"))
 
 
+def _run_alembic_migrations() -> bool:
+    """Run Alembic migrations if a scripts directory is present.
+
+    Returns True when migrations ran. Falls back to create_all when there is
+    no migration history yet (e.g. legacy local databases)."""
+    import importlib.util
+
+    if importlib.util.find_spec("alembic") is None:
+        return False
+    scripts_dir = Path(__file__).resolve().parent.parent / "alembic"
+    if not (scripts_dir / "env.py").exists():
+        return False
+    from alembic import command
+    from alembic.config import Config
+
+    cfg = Config(str(scripts_dir.parent / "alembic.ini"))
+    cfg.set_main_option("script_location", str(scripts_dir))
+    try:
+        command.upgrade(cfg, "head")
+        return True
+    except Exception:
+        # No alembic_version table yet (pre-migration database): fall through
+        # to create_all so the app still boots, then stamp as head.
+        try:
+            command.stamp(cfg, "head")
+        except Exception:
+            pass
+        return False
+
+
 def init_db():
     from app.models.resume import Resume
     from app.models.analysis import Analysis, JDAnalysis, CoverLetter
     from app.models.admin import VisitorLog, AdminSetting
     from app.models.payment import Subscription
     from app.models.contact import ContactMessage
+    if _run_alembic_migrations():
+        return
     Base.metadata.create_all(bind=engine)
     _ensure_owner_token_column()
     _ensure_indexes()
