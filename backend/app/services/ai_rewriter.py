@@ -51,18 +51,23 @@ def generate_achievements(parsed: dict, jd_text: str | None = None) -> dict:
 
 
 def _rule_achievements(items):
-    import re
     out = []
     for label, bullet in items:
         rewritten = RewriteService._rewrite_cliche(bullet)
-        has_verb = any(rewritten.startswith(v) for v in RewriteService.ACTION_VERBS)
-        has_num = bool(
-            re.search(r"\d+%|\$\d+|\d+\s+(people|customers|users|clients|teams?|stakeholders?)", rewritten.lower())
-        )
-        if not has_verb:
+        words = rewritten.split()
+        first_word = words[0].rstrip(".,:;") if words else ""
+        first_word_lower = first_word.lower()
+
+        if first_word_lower in RewriteService.VERB_CONVERSIONS:
+            better_verb = RewriteService.VERB_CONVERSIONS[first_word_lower]
+            rest = " ".join(words[1:])
+            rewritten = f"{better_verb} {rest}".strip()
+        elif first_word_lower not in RewriteService.ACTION_VERBS_SET:
             verb = RewriteService._suggest_verb(label)
             rest = rewritten[:1].lower() + rewritten[1:] if rewritten else ""
             rewritten = f"{verb} {rest}".strip()
+
+        has_num = bool(RewriteService.METRIC_REGEX.search(rewritten))
         impact = "Add a quantified result to show business impact" if not has_num else "Strong achievement statement"
         out.append({"section": label, "original": bullet, "achievement": rewritten, "impact": impact})
     return out
@@ -175,8 +180,19 @@ def improve_experience(parsed: dict, jd_text: str | None = None) -> dict:
     rewrites = []
     for label, bullet in items:
         rewritten = RewriteService._rewrite_cliche(bullet)
-        if not any(rewritten.startswith(v) for v in RewriteService.ACTION_VERBS):
-            rewritten = f"{RewriteService._suggest_verb(label)} {rewritten[:1].lower() + rewritten[1:] if rewritten else ''}".strip()
+        words = rewritten.split()
+        first_word = words[0].rstrip(".,:;") if words else ""
+        first_word_lower = first_word.lower()
+
+        if first_word_lower in RewriteService.VERB_CONVERSIONS:
+            better_verb = RewriteService.VERB_CONVERSIONS[first_word_lower]
+            rest = " ".join(words[1:])
+            rewritten = f"{better_verb} {rest}".strip()
+        elif first_word_lower not in RewriteService.ACTION_VERBS_SET:
+            verb = RewriteService._suggest_verb(label)
+            rest = rewritten[:1].lower() + rewritten[1:] if rewritten else ""
+            rewritten = f"{verb} {rest}".strip()
+
         rewrites.append({"section": label, "original": bullet, "rewritten": rewritten})
     return {"source": "rules", "rewrites": rewrites}
 

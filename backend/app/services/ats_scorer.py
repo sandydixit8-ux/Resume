@@ -104,40 +104,61 @@ class ATSScorerService:
                 items.append(f"{key}: not found")
         return score, "; ".join(items)
 
-    @staticmethod
-    def _score_dates(text: str):
+    DATE_PATTERNS = [
+        re.compile(r'[A-Z][a-z]{2}\s*\d{4}\s*[\-\u2013to]+\s*(?:[A-Z][a-z]{2}\s*\d{4}|Present|Current|Now)', re.IGNORECASE),
+        re.compile(r'\d{4}\s*[\-\u2013to]+\s*(?:\d{4}|Present|Current|Now)', re.IGNORECASE)
+    ]
+
+    ACTION_VERBS_SET = {
+        "achieved", "accelerated", "advised", "analyzed", "architected", "authored", "automated",
+        "built", "chaired", "championed", "closed", "commissioned", "consolidated", "coordinated",
+        "created", "delivered", "designed", "developed", "devised", "directed", "drove",
+        "established", "executed", "generated", "governed", "grew", "implemented", "improved",
+        "increased", "initiated", "innovated", "integrated", "introduced", "launched", "lead",
+        "led", "managed", "mentored", "negotiated", "optimized", "owned", "oversaw", "prepared",
+        "provided", "reduced", "spearheaded", "streamlined", "supervised", "trained", "transformed"
+    }
+
+    QUANTIFIED_REGEX = re.compile(
+        r'\d+%|\$\d+|\bRs\.?\s*[\d,]+|\b₹\s*[\d,]+\s*(Cr|Crore|Lakh|L|k)?|\d[\d,]*\+?\s*(people|customers|users|clients|members|teams?|junctions|stations|plazas|sites|vendors|projects|programs|features|requests|deployments|applications|districts|work streams|concurrent)',
+        re.IGNORECASE
+    )
+
+    NUMBERED_BULLET_REGEX = re.compile(r'^\d+[.)]')
+
+    @classmethod
+    def _score_dates(cls, text: str):
         score = 100
         items = []
-        pats = [r'[A-Z][a-z]{2}\s*\d{4}\s*[-u2013to]+\s*(?:[A-Z][a-z]{2}\s*\d{4}|Present|Current|Now)',
-                r'\d{4}\s*[-u2013to]+\s*(?:\d{4}|Present|Current|Now)']
         dates = []
-        for p in pats:
-            dates.extend(re.findall(p, text))
+        for p in cls.DATE_PATTERNS:
+            dates.extend(p.findall(text))
         if not dates:
             return 30, "No date ranges detected"
         items.append(f"{len(dates)} date range(s) found")
-        if not any("Present" in d or "Current" in d for d in dates):
+        if not any("Present" in d or "Current" in d or "present" in d or "current" in d for d in dates):
             score -= 10
             items.append("No current role marked")
         return max(0, score), "; ".join(items)
 
-    @staticmethod
-    def _score_bullets(text: str):
+    @classmethod
+    def _score_bullets(cls, text: str):
         score = 0
         items = []
         lines = text.split("\n")
-        bullets = [l.strip() for l in lines if l.strip().startswith(("\u2022", "-", "*")) or re.match(r'^\d+[.)]', l.strip())]
+        bullets = [l.strip() for l in lines if l.strip().startswith(("\u2022", "-", "*")) or cls.NUMBERED_BULLET_REGEX.match(l.strip())]
         if not bullets:
             return 20, "No bullet points found"
-        verbs = ["achieved", "accelerated", "analyzed", "architected", "authored", "built", "chaired", "closed", "commissioned", "coordinated", "created", "delivered", "designed", "developed", "directed", "drove", "established", "executed", "generated", "governed", "grew", "implemented", "improved", "increased", "initiated", "launched", "lead", "led", "managed", "mentored", "negotiated", "optimized", "owned", "oversaw", "prepared", "provided", "reduced", "spearheaded", "streamlined", "supervised", "trained", "transformed"]
+
         vcount = 0
         qcount = 0
         for b in bullets:
             stripped = b.lstrip("\u2022-*0123456789). ").strip()
             words = stripped.split()
-            if words and words[0].lower() in verbs:
+            first_word_lower = words[0].rstrip(".,:;").lower() if words else ""
+            if first_word_lower in cls.ACTION_VERBS_SET:
                 vcount += 1
-            if re.search(r'\d+%|\$\d+|\bRs\.?\s*[\d,]+|\d[\d,]*\+?\s*(people|customers|users|clients|members|teams?|junctions|stations|plazas|sites|vendors|projects|programs|features|requests|deployments|applications)', b.lower()):
+            if cls.QUANTIFIED_REGEX.search(b):
                 qcount += 1
         score += min(40, (vcount / len(bullets)) * 40) if bullets else 0
         score += min(40, (qcount / len(bullets)) * 40) if bullets else 0
