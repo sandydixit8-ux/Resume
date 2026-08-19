@@ -51,6 +51,29 @@ def test_improve_experience_verbs():
     assert any("respons" not in r["rewritten"].lower() for r in result["rewrites"])
 
 
+def test_verb_conversions_present_to_past():
+    from app.services.rewrite import RewriteService
+    sample_present = {
+        "experience": [
+            {
+                "title": "Project Manager",
+                "company": "Acme",
+                "bullets": [
+                    "Direct EOI, DPR, and RFP governance for AI platform",
+                    "Control program budgeting and procurement",
+                    "Lead planning and execution of e-Governance programs"
+                ]
+            }
+        ]
+    }
+    suggestions = RewriteService.generate_suggestions(sample_present, "")
+    verbs_upgraded = [s for s in suggestions if s.get("type") == "verb_upgrade"]
+    assert len(verbs_upgraded) == 3
+    assert verbs_upgraded[0]["suggestion"].startswith("Directed ")
+    assert verbs_upgraded[1]["suggestion"].startswith("Managed ")
+    assert verbs_upgraded[2]["suggestion"].startswith("Led ")
+
+
 def test_linkedin_fallback():
     result = linkedin_profile(SAMPLE)
     assert result["headline"]
