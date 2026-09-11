@@ -38,3 +38,11 @@ Thumbs.db
 
 # Generated publish folder (assembled by make-publish.ps1)
 publish/
+
+# Isolated projects - each has its own repo
+/ai-voice-saas/
+/missed-call-demo/
+/panda/
+/toolpilot/
+/toolpilotpro/
+/youtube-automation-agent/

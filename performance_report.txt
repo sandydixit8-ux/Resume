@@ -1,0 +1,53 @@
+﻿==========================================
+   SYSTEM PERFORMANCE REPORT
+   03-Sep-2026 11:31:54
+==========================================
+
+=== HARDWARE ===
+System: Dell Inc. Vostro 5402
+CPU: 11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz | 4 cores / 8 threads
+RAM Total: 7.7 GB
+RAM Free: 0.9 GB
+RAM Used: 88.2%
+CPU Load: 38%
+
+=== DISK ===
+NVMe BC511 NVMe SK hynix 512GB | SSD | 477 GB | Health: Healthy
+Drive C: | Used 213 GB / 213 GB | Free 41 GB (on disk)
+Drive D: | Used 169 GB / 169 GB | Free 35 GB (on disk)
+Drive E: | Used 63 GB / 63 GB | Free 51 GB (on disk)
+Drive F: | Used 14 GB / 14 GB | Free 11 GB (on disk)
+
+=== TOP 10 PROCESSES BY MEMORY ===
+  MsMpEng                         362 MB
+  Memory Compression              334 MB
+  OpenCode                        227 MB
+  OpenCode                        200 MB
+  msedge                          196 MB
+  powershell                      182 MB
+  Taskmgr                         177 MB
+  MSPCManager                     152 MB
+  Dell.D3.WinSvc                  141 MB
+  Dell.TechHub.Instrumentation.SubAgent    127 MB
+
+=== TOP 10 PROCESSES BY CPU TIME ===
+  OpenCode                          163 s
+  OpenCode                          158 s
+  MSPCManager                        76 s
+  Taskmgr                            55 s
+  OpenCode                           49 s
+  MSPCManagerCore                    41 s
+  msedgewebview2                     36 s
+  OpenCode                           25 s
+  explorer                           24 s
+  msedgewebview2                     21 s
+
+=== UPTIME ===
+Last boot: 09/03/2026 11:19:33
+Uptime: 0.2 hours
+==========================================
+RECOMMENDATIONS:
+1. RAM 8GB me se 85%+ use ho raha hai - browsers/tabs me kam rakho
+2. RAM 16GB upgrade is the best long-term fix for Vostro 5402
+3. Startup bloatware remove ho chuka hai - restart se fast boot milega
+==========================================
