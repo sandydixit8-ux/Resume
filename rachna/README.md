@@ -61,6 +61,17 @@ rachna/
 
 `[YOUR-WHATSAPP]` · `[YOUR-GSTIN]` · `[YOUR-ADDRESS]` · `[YOUR-CITY]` · `[YOUR-EMAIL]` · `[YOUR-CHECKOUT-LINK]` (each Buy button links here) · `[YOUR-DOMAIN]`.
 
+## Tracking (already wired into every page)
+
+Every page already loads `site/js/tracking.js` (Meta Pixel + GA4 + event wiring: PageView, ViewContent on the product page, InitiateCheckout on all Buy buttons). Just open that file and replace the two IDs:
+
+| Field | Where to get it |
+|---|---|
+| `[YOUR-META-PIXEL-ID]` | Meta Business Suite → Events Manager → Pixel |
+| `[YOUR-GA4-ID]` | Google Analytics → Admin → Data Streams (`G-XXXXXXX`) |
+
+Then verify with Meta Pixel Helper on a real test purchase. Purchase events must fire from your payment gateway's confirmation page — add the pixel `purchase` code there (Razorpay/Cashfree webhook docs), since checkout is hosted externally.
+
 ## Deploy options (cheap → free)
 
 1. **Netlify Drop** — drag & drop this `site/` folder → get a public URL in 60 seconds (free). Point `rachna.in` to it later.
