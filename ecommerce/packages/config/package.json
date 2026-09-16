@@ -1,0 +1,21 @@
+{
+  "name": "@nexus/config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    "./eslint": "./eslint.config.mjs",
+    "./prettier": "./prettier.config.mjs",
+    "./tsconfig.node": "./tsconfig.node.json",
+    "./tsconfig.next": "./tsconfig.next.json"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.15",
+    "eslint-plugin-react": "^7.37.1",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "prettier": "^3.3.3"
+  }
+}

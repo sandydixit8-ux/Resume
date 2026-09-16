@@ -1,0 +1,5 @@
+@import "@nexus/ui/tokens";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

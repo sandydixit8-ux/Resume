@@ -1,0 +1,36 @@
+{
+  "name": "@nexus/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "src"],
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens": "./src/styles/tokens.css",
+    "./tailwind": "./src/tailwind/tokens.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "echo \"ui package consumed as source by next apps\" && exit 0"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.1.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.10",
+    "@types/react-dom": "^18.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.3"
+  },
+  "peerDependencies": {
+    "react": "^18"
+  }
+}
