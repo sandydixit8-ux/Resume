@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { verify } from "./session";
-import { all, row } from "@/lib/db/db";
+import { row } from "@/lib/db/db";
 
 export interface SessionUser {
   id: string;

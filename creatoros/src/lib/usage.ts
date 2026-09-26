@@ -1,4 +1,4 @@
-import { all, row, run, newId, nowIso } from "@/lib/db/db";
+import { all, row, run, newId } from "@/lib/db/db";
 
 /** Increment a tenant's usage counter for a metric+period, returning the new count. */
 export function bumpUsage(tenantId: string, metric: string, amount = 1): number {

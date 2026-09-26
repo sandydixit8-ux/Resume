@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
@@ -8,7 +8,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-XSS-Protection": "0",
 };
 
-export function proxy(request: NextRequest) {
+export function proxy() {
   const response = NextResponse.next();
   Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
     response.headers.set(key, value);

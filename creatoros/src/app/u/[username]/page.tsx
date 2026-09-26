@@ -38,7 +38,7 @@ export default async function PublicBioPage({ params }: Props) {
   const bio = getPublicBioPage(username);
   if (!bio || bio.page.published !== 1) notFound();
 
-  trackPublicView(bio, username);
+  trackPublicView(bio);
 
   return <PublicBioPageView bio={bio} />;
 }

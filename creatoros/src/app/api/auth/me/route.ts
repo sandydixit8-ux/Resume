@@ -5,7 +5,7 @@ import { all, row } from "@/lib/db/db";
 import { getLimits } from "@/lib/plans";
 import { allUsage } from "@/lib/usage";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const s = await getSession();
   if (!s) return err.auth();
 

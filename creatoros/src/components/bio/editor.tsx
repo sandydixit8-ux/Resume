@@ -80,7 +80,7 @@ export function BioEditor(props: {
     // For booking default to first service if any
     const payload = { ...entry.defaultPayload };
     if (type === "booking" && props.services.length > 0) payload.serviceSlug = props.services[0].slug;
-    const tempId = `tmp_${Math.random().toString(36).slice(2, 9)}`;
+    const tempId = `tmp_${crypto.randomUUID()}`;
     setBlocks((prev) => [...prev, { id: tempId, type, payload, position: prev.length, active: true }]);
     void entry;
   }
@@ -219,7 +219,7 @@ function BlockCard(props: {
   onChange: (patch: Partial<EditorBlock>) => void;
   onRemove: () => void;
 }) {
-  const { block, index, total } = props;
+  const { block, index } = props;
 
   return (
     <div

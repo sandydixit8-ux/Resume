@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/get-session";
 import { ok, err } from "@/lib/http";
-import { summary, timeSeries, breakdownBy } from "@/lib/analytics/engine";
+import { summary } from "@/lib/analytics/engine";
 import { can } from "@/lib/auth/rbac";
 
 export async function GET(req: NextRequest) {

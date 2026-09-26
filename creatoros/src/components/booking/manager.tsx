@@ -35,14 +35,14 @@ export interface BookingRow {
   created_at: string;
 }
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 
 export function BookingManager(props: {
   initialServices: ServiceRow[];
   initialAvailability: AvailabilityRow[];
   initialBookings: BookingRow[];
 }) {
-  const [services, setServices] = useState<ServiceRow[]>(props.initialServices);
+  const [services] = useState<ServiceRow[]>(props.initialServices);
   const [availability, setAvailability] = useState<AvailabilityRow[]>(props.initialAvailability);
   const [bookings] = useState<BookingRow[]>(props.initialBookings);
   const [openService, setOpenService] = useState<string | null>(services[0]?.id ?? null);

@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { Check } from "lucide-react";
 import { getSession } from "@/lib/auth/get-session";
-import { all, row } from "@/lib/db/db";
-import { getLimits, PLANS, PLAN_PRICES } from "@/lib/plans";
+import { row } from "@/lib/db/db";
+import { getLimits, PLAN_PRICES } from "@/lib/plans";
 import { allUsage } from "@/lib/usage";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,7 @@ export default async function BillingPage() {
     { label: "Contacts", used: Math.max(contactCount, usage.contacts || 0), limit: limits.contacts },
     { label: "Bookings services", used: serviceCount, limit: limits.services },
     { label: "AI credits", used: usage.aiCredits || 0, limit: limits.aiCredits },
+    { label: "Emails sent", used: usage.emails || 0, limit: limits.emailsPerMonth },
     { label: "Views / month", used: usage.viewsPerMonth || 0, limit: limits.viewsPerMonth },
   ];
 

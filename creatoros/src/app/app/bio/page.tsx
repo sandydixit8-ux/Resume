@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/get-session";
 import { getProfileForUser } from "@/lib/bio/page";
 import { all } from "@/lib/db/db";
-import { BioPagesList, NewBioPageButton } from "@/components/bio/bio-pages-list";
+import { BioPagesList } from "@/components/bio/bio-pages-list";
 import { BioCreateButton } from "@/components/bio/bio-create-button";
 
 export const dynamic = "force-dynamic";

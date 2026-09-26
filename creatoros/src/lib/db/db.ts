@@ -20,6 +20,52 @@ export function getDb(): DatabaseSync {
 export function migrate(db: DatabaseSync) {
   const schema = readFileSync(join(process.cwd(), "src", "lib", "db", "schema.sql"), "utf8");
   db.exec(schema);
+  runMigrations(db);
+}
+
+/** Ordered, idempotent migrations for database files created before a schema change. */
+const MIGRATIONS: Array<{ id: number; up: (db: DatabaseSync) => void }> = [
+  {
+    id: 1,
+    up: (db) => addColumn(db, "email_campaigns", "template_id", "TEXT REFERENCES email_templates(id) ON DELETE SET NULL"),
+  },
+  {
+    id: 2,
+    up: (db) => addColumn(db, "email_campaigns", "from_name", "TEXT NOT NULL DEFAULT ''"),
+  },
+  {
+    id: 3,
+    up: (db) => addColumn(db, "email_campaigns", "sent_at", "TEXT"),
+  },
+  {
+    id: 4,
+    up: (db) => addColumn(db, "email_campaigns", "stats", "TEXT NOT NULL DEFAULT '{}'"),
+  },
+];
+
+function addColumn(db: DatabaseSync, table: string, column: string, ddl: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[];
+  if (cols.some((c) => c.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+}
+
+function runMigrations(db: DatabaseSync) {
+  db.exec("CREATE TABLE IF NOT EXISTS _migrations (id INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)");
+  const applied = new Set(
+    (db.prepare("SELECT id FROM _migrations").all() as unknown as { id: number }[]).map((r) => r.id)
+  );
+  for (const m of MIGRATIONS) {
+    if (applied.has(m.id)) continue;
+    db.exec("BEGIN");
+    try {
+      m.up(db);
+      db.prepare("INSERT INTO _migrations (id, applied_at) VALUES (?, ?)").run(m.id, new Date().toISOString());
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    }
+  }
 }
 
 export type Row = Record<string, unknown>;

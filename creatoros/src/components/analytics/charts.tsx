@@ -49,32 +49,29 @@ export function DonutChart({ parts }: { parts: { label: string; count: number }[
   const cx = size / 2;
   const cy = size / 2;
   const c = 2 * Math.PI * r;
-  let offset = 0;
+  const segments = parts.map((p, i) => {
+    const before = parts.slice(0, i).reduce((s, q) => s + q.count, 0);
+    return { dash: (p.count / total) * c, offset: -((before / total) * c) };
+  });
 
   return (
     <div className="flex items-center gap-6">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e9edf5" strokeWidth="18" />
-        {parts.map((p, i) => {
-          const frac = p.count / total;
-          const dash = frac * c;
-          const el = (
-            <circle
-              key={p.label}
-              cx={cx}
-              cy={cy}
-              r={r}
-              fill="none"
-              stroke={colors[i % colors.length]}
-              strokeWidth="18"
-              strokeDasharray={`${dash} ${c - dash}`}
-              strokeDashoffset={-offset}
-              transform={`rotate(-90 ${cx} ${cy})`}
-            />
-          );
-          offset += dash;
-          return el;
-        })}
+        {parts.map((p, i) => (
+          <circle
+            key={p.label}
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            stroke={colors[i % colors.length]}
+            strokeWidth="18"
+            strokeDasharray={`${segments[i].dash} ${c - segments[i].dash}`}
+            strokeDashoffset={segments[i].offset}
+            transform={`rotate(-90 ${cx} ${cy})`}
+          />
+        ))}
       </svg>
       <ul className="space-y-1.5 text-sm">
         {parts.map((p, i) => (

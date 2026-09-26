@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CalendarCheck, Link2, Sparkles, Users } from "lucide-react";
 import { getSession } from "@/lib/auth/get-session";
-import { summary, timeSeries } from "@/lib/analytics/engine";
+import { summary, timeSeries, breakdownBy } from "@/lib/analytics/engine";
 import { all, row } from "@/lib/db/db";
 import { SummaryCards } from "@/components/analytics/summary-cards";
 import { ViewsChart, DonutChart } from "@/components/analytics/charts";
@@ -129,7 +129,6 @@ export default async function DashboardPage() {
 }
 
 function breakdown(tenantId: string, col: "ref" | "utm_source" | "device" | "country") {
-  const { breakdownBy } = require("@/lib/analytics/engine") as typeof import("@/lib/analytics/engine");
   return breakdownBy(tenantId, col);
 }
 

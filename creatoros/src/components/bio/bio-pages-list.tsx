@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Link2, Plus, QrCode, Trash2 } from "lucide-react";
+import { Link2, Plus, QrCode } from "lucide-react";
 
 export interface BioPageRow {
   id: string;

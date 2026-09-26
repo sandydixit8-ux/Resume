@@ -21,6 +21,12 @@ export interface PublicWindow {
   end_min: number;
 }
 
+interface Slot {
+  start: string;
+  end: string;
+  label: string;
+}
+
 export function PublicBookingClient(props: {
   username: string;
   pageSlug: string;
@@ -33,13 +39,19 @@ export function PublicBookingClient(props: {
   const requestorTz = useMemo(() => guessTimezone(), []);
   const [dates, setDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [slots, setSlots] = useState<{ start: string; end: string; label: string }[]>([]);
+  const [slotsData, setSlotsData] = useState<{ date: string; slots: Slot[] } | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingSlots, setLoadingSlots] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", notes: "" });
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
+
+  const slots = useMemo(
+    () => (slotsData && selectedDate && slotsData.date === selectedDate ? slotsData.slots : []),
+    [slotsData, selectedDate]
+  );
+  const loadingSlots = Boolean(selectedDate) && (!slotsData || slotsData.date !== selectedDate);
+  const activeSlot = selectedSlot && slots.some((s) => s.start === selectedSlot) ? selectedSlot : null;
 
   useEffect(() => {
     fetch(`${SITE_URL}/api/booking/slots?username=${encodeURIComponent(username)}&serviceSlug=${encodeURIComponent(service.slug)}&tz=${encodeURIComponent(requestorTz)}`)
@@ -58,22 +70,24 @@ export function PublicBookingClient(props: {
 
   useEffect(() => {
     if (!selectedDate) return;
-    setLoadingSlots(true);
-    setSlots([]);
-    setSelectedSlot(null);
+    let cancelled = false;
     fetch(`${SITE_URL}/api/booking/slots?username=${encodeURIComponent(username)}&serviceSlug=${encodeURIComponent(service.slug)}&date=${selectedDate}&tz=${encodeURIComponent(requestorTz)}`)
       .then((r) => r.json())
       .then((j) => {
-        if (j.ok) setSlots(j.data.slots as { start: string; end: string; label: string }[]);
-        else setSlots([]);
+        if (cancelled) return;
+        setSlotsData({ date: selectedDate, slots: j.ok ? (j.data.slots as Slot[]) : [] });
       })
-      .catch(() => setSlots([]))
-      .finally(() => setLoadingSlots(false));
+      .catch(() => {
+        if (!cancelled) setSlotsData({ date: selectedDate, slots: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedDate, username, service.slug, requestorTz]);
 
   async function book(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedSlot) return;
+    if (!activeSlot) return;
     setState("loading");
     try {
       const res = await fetch(`${SITE_URL}/api/booking/slots/book`, {
@@ -82,7 +96,7 @@ export function PublicBookingClient(props: {
         body: JSON.stringify({
           username,
           serviceSlug: service.slug,
-          start: selectedSlot,
+          start: activeSlot,
           attendeeName: form.name,
           attendeeEmail: form.email,
           timezone: requestorTz,
@@ -175,7 +189,7 @@ export function PublicBookingClient(props: {
                       type="button"
                       onClick={() => setSelectedSlot(s.start)}
                       className={`rounded-xl border px-3 py-2 text-sm transition ${
-                        selectedSlot === s.start ? "border-brand-500 bg-brand-600 text-white" : "border-navy-100 text-navy-700 hover:border-brand-300"
+                        activeSlot === s.start ? "border-brand-500 bg-brand-600 text-white" : "border-navy-100 text-navy-700 hover:border-brand-300"
                       }`}
                     >
                       {timeLabel(s.label)}
@@ -185,7 +199,7 @@ export function PublicBookingClient(props: {
               )}
             </div>
 
-            {selectedSlot && (
+            {activeSlot && (
               <form onSubmit={book} className="card p-5">
                 <h2 className="mb-3 text-sm font-semibold text-navy-800">3. Your details</h2>
                 <div className="space-y-3">

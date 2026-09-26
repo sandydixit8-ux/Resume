@@ -37,7 +37,6 @@ export function computeSlots(opts: {
     windows,
     existing,
     serviceDurationMin,
-    bufferMin = 0,
     dateStr,
     ownerTz,
     requestorTz,

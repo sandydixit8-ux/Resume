@@ -200,16 +200,64 @@ CREATE TABLE IF NOT EXISTS email_lists (
   created_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS email_campaigns (
+CREATE TABLE IF NOT EXISTS email_list_members (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  list_id    TEXT NOT NULL REFERENCES email_lists(id) ON DELETE CASCADE,
+  contact_id TEXT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  UNIQUE (list_id, contact_id)
+);
+
+CREATE TABLE IF NOT EXISTS email_templates (
   id          TEXT PRIMARY KEY,
   tenant_id   TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  list_id     TEXT REFERENCES email_lists(id) ON DELETE SET NULL,
+  name        TEXT NOT NULL,
   subject     TEXT NOT NULL,
   body        TEXT NOT NULL DEFAULT '',
-  status      TEXT NOT NULL DEFAULT 'draft',  -- draft | scheduled | sent
-  scheduled_at TEXT,
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS email_campaigns (
+  id           TEXT PRIMARY KEY,
+  tenant_id    TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  list_id      TEXT REFERENCES email_lists(id) ON DELETE SET NULL,
+  template_id  TEXT REFERENCES email_templates(id) ON DELETE SET NULL,
+  subject      TEXT NOT NULL,
+  body         TEXT NOT NULL DEFAULT '',
+  from_name    TEXT NOT NULL DEFAULT '',
+  status       TEXT NOT NULL DEFAULT 'draft',  -- draft | scheduled | sending | sent | canceled
+  scheduled_at TEXT,
+  sent_at      TEXT,
+  stats        TEXT NOT NULL DEFAULT '{}',     -- JSON {sent, opened, clicked, unsubscribed, failed}
+  created_at   TEXT NOT NULL,
+  updated_at   TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS email_sends (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  campaign_id TEXT NOT NULL REFERENCES email_campaigns(id) ON DELETE CASCADE,
+  contact_id  TEXT REFERENCES contacts(id) ON DELETE SET NULL,
+  email       TEXT NOT NULL,
+  subject     TEXT NOT NULL DEFAULT '',
+  status      TEXT NOT NULL DEFAULT 'queued',  -- queued | sent | failed | bounced | unsubscribed
+  provider_id TEXT NOT NULL DEFAULT '',
+  error       TEXT NOT NULL DEFAULT '',
+  opened_at   TEXT,
+  clicked_at  TEXT,
+  sent_at     TEXT,
+  created_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS unsubscribes (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  email      TEXT NOT NULL,
+  reason     TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  UNIQUE (tenant_id, email)
 );
 
 CREATE TABLE IF NOT EXISTS templates (
