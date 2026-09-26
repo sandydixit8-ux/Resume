@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 const VISITOR_SALT = process.env.VISITOR_SALT || "creatoros-visitor";
 
-export type EventType = "page_view" | "lead" | "booking" | "link_click";
+export type EventType = "page_view" | "lead" | "booking" | "link_click" | "checkout_started" | "purchase";
 
 export interface TrackEventInput {
   tenantId: string;
@@ -64,7 +64,9 @@ export function summary(tenantId: string, days = 30): AnalyticsSummary {
   const leads = Number(q("SELECT COUNT(*) AS c FROM analytics_events WHERE tenant_id = ? AND created_at >= ? AND event_type = 'lead'", tenantId, since));
   const bookingsCount = Number(q("SELECT COUNT(*) AS c FROM analytics_events WHERE tenant_id = ? AND created_at >= ? AND event_type = 'booking'", tenantId, since));
   const linkClicks = Number(q("SELECT COUNT(*) AS c FROM analytics_events WHERE tenant_id = ? AND created_at >= ? AND event_type = 'link_click'", tenantId, since));
-  const revenueCents = Number(q("SELECT COALESCE(SUM(s.price_cents), 0) AS c FROM bookings b JOIN services s ON s.id = b.service_id WHERE b.tenant_id = ? AND b.created_at >= ? AND b.status = 'confirmed'", tenantId, since));
+  const revenueCents =
+    Number(q("SELECT COALESCE(SUM(s.price_cents), 0) AS c FROM bookings b JOIN services s ON s.id = b.service_id WHERE b.tenant_id = ? AND b.created_at >= ? AND b.status = 'confirmed'", tenantId, since)) +
+    Number(q("SELECT COALESCE(SUM(amount_cents), 0) AS c FROM orders WHERE tenant_id = ? AND created_at >= ? AND status = 'paid'", tenantId, since));
 
   return {
     visitors,

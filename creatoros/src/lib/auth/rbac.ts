@@ -18,16 +18,18 @@ export type Permission =
   | "coach:read"
   | "email:read"
   | "email:write"
+  | "store:read"
+  | "store:write"
   | "billing:read"
   | "billing:write"
   | "settings:read"
   | "settings:write";
 
 const PERMISSIONS: Record<Role, Permission[]> = {
-  viewer: ["bio:read", "booking:read", "leads:read", "analytics:read", "email:read"],
-  editor: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "email:read", "email:write"],
-  admin: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "coach:read", "email:read", "email:write", "settings:read", "settings:write"],
-  owner: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "coach:read", "email:read", "email:write", "billing:read", "billing:write", "settings:read", "settings:write"],
+  viewer: ["bio:read", "booking:read", "leads:read", "analytics:read", "email:read", "store:read"],
+  editor: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "email:read", "email:write", "store:read", "store:write"],
+  admin: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "coach:read", "email:read", "email:write", "store:read", "store:write", "settings:read", "settings:write"],
+  owner: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "coach:read", "email:read", "email:write", "store:read", "store:write", "billing:read", "billing:write", "settings:read", "settings:write"],
 };
 
 export function can(role: Role, perm: Permission): boolean {

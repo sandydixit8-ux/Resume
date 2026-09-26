@@ -356,3 +356,41 @@ CREATE INDEX IF NOT EXISTS idx_bookings_tenant ON bookings(tenant_id, starts_at)
 CREATE INDEX IF NOT EXISTS idx_contacts_tenant ON contacts(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_audit_tenant ON audit_logs(tenant_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_avail_service ON availability_windows(service_id);
+-- ============ Store: orders (payments for products/courses) ============
+CREATE TABLE IF NOT EXISTS orders (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  contact_id  TEXT REFERENCES contacts(id) ON DELETE SET NULL,
+  email       TEXT NOT NULL DEFAULT '',
+  status      TEXT NOT NULL DEFAULT 'pending',  -- pending | paid | failed | refunded | canceled
+  amount_cents INTEGER NOT NULL DEFAULT 0,
+  currency    TEXT NOT NULL DEFAULT 'usd',
+  provider    TEXT NOT NULL DEFAULT 'mock',
+  provider_session_id TEXT NOT NULL DEFAULT '',
+  token       TEXT NOT NULL UNIQUE,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id          TEXT PRIMARY KEY,
+  order_id    TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  tenant_id   TEXT NOT NULL,
+  product_id  TEXT REFERENCES products(id) ON DELETE SET NULL,
+  title       TEXT NOT NULL,
+  quantity    INTEGER NOT NULL DEFAULT 1,
+  unit_price_cents INTEGER NOT NULL DEFAULT 0
+);
+
+-- Payment provider webhook events (idempotency ledger)
+CREATE TABLE IF NOT EXISTS webhook_events (
+  id           TEXT PRIMARY KEY,  -- provider event id
+  provider     TEXT NOT NULL DEFAULT 'stripe',
+  type         TEXT NOT NULL,
+  payload      TEXT NOT NULL DEFAULT '{}',
+  processed_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_tenant ON orders(tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_orders_session ON orders(provider_session_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);

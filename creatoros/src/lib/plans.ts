@@ -3,6 +3,8 @@ export interface PlanLimits {
   links: number;
   contacts: number;
   services: number;
+  products: number;
+  courses: number;
   viewsPerMonth: number;
   aiCredits: number;
   emailsPerMonth: number;
@@ -11,11 +13,11 @@ export interface PlanLimits {
 }
 
 export const PLANS: Record<string, PlanLimits> = {
-  free: { bioPages: 1, links: 5, contacts: 10, services: 1, viewsPerMonth: 1000, aiCredits: 10, emailsPerMonth: 100, customDomain: false, emailAutomation: false },
-  starter: { bioPages: 1, links: 25, contacts: 500, services: 3, viewsPerMonth: 10000, aiCredits: 50, emailsPerMonth: 1000, customDomain: false, emailAutomation: false },
-  creator: { bioPages: 3, links: 100, contacts: 2000, services: 10, viewsPerMonth: 50000, aiCredits: 200, emailsPerMonth: 5000, customDomain: true, emailAutomation: true },
-  pro: { bioPages: 10, links: -1, contacts: 10000, services: -1, viewsPerMonth: 250000, aiCredits: 800, emailsPerMonth: 20000, customDomain: true, emailAutomation: true },
-  business: { bioPages: -1, links: -1, contacts: -1, services: -1, viewsPerMonth: -1, aiCredits: -1, emailsPerMonth: -1, customDomain: true, emailAutomation: true },
+  free: { bioPages: 1, links: 5, contacts: 10, services: 1, products: 5, courses: 1, viewsPerMonth: 1000, aiCredits: 10, emailsPerMonth: 100, customDomain: false, emailAutomation: false },
+  starter: { bioPages: 1, links: 25, contacts: 500, services: 3, products: 25, courses: 3, viewsPerMonth: 10000, aiCredits: 50, emailsPerMonth: 1000, customDomain: false, emailAutomation: false },
+  creator: { bioPages: 3, links: 100, contacts: 2000, services: 10, products: 100, courses: 10, viewsPerMonth: 50000, aiCredits: 200, emailsPerMonth: 5000, customDomain: true, emailAutomation: true },
+  pro: { bioPages: 10, links: -1, contacts: 10000, services: -1, products: -1, courses: 50, viewsPerMonth: 250000, aiCredits: 800, emailsPerMonth: 20000, customDomain: true, emailAutomation: true },
+  business: { bioPages: -1, links: -1, contacts: -1, services: -1, products: -1, courses: -1, viewsPerMonth: -1, aiCredits: -1, emailsPerMonth: -1, customDomain: true, emailAutomation: true },
 };
 
 export function getLimits(plan: string): PlanLimits {

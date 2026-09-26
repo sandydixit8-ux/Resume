@@ -23,6 +23,15 @@ export interface PublicBioPage {
     payload: Record<string, string>;
     position: number;
   }>;
+  products: Array<{
+    id: string;
+    name: string;
+    description: string;
+    price_cents: number;
+    currency: string;
+    kind: string;
+    media_url: string;
+  }>;
   tenantId: string;
 }
 
@@ -49,6 +58,12 @@ export function getPublicBioPage(username: string, pageSlug = ""): PublicBioPage
     page.id
   );
 
+  const products = all<{ id: string; name: string; description: string; price_cents: number; currency: string; kind: string; media_url: string }>(
+    "SELECT id, name, description, price_cents, currency, kind, media_url FROM products WHERE tenant_id = ? AND active = 1 AND (page_id IS NULL OR page_id = ?) ORDER BY created_at ASC",
+    profile.tenant_id,
+    page.id
+  );
+
   return {
     page: {
       id: page.id,
@@ -67,6 +82,7 @@ export function getPublicBioPage(username: string, pageSlug = ""): PublicBioPage
       socials: safeJson(profile.socials),
     },
     blocks: blocks.map((b) => ({ id: b.id, type: b.type, payload: safeJson<Record<string, string>>(b.payload), position: b.position })),
+    products,
     tenantId: profile.tenant_id,
   };
 }

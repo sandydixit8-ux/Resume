@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, CalendarCheck, Check, Instagram, Globe, Youtube, Linkedin, Twitter, Music2, Mail, Link2 } from "lucide-react";
 import type { PublicBioPage } from "@/lib/bio/page";
 import { SITE_URL } from "@/lib/constants";
+import { formatPrice } from "@/lib/money";
 
 export function PublicBioPageView({ bio }: { bio: PublicBioPage }) {
   const theme = bio.page.theme;
@@ -87,6 +88,19 @@ export function PublicBioPageView({ bio }: { bio: PublicBioPage }) {
           ))}
         </div>
 
+        {bio.products.length > 0 && (
+          <div className="mt-8">
+            <div className="mb-3 text-center text-[11px] font-semibold uppercase tracking-wider" style={{ color: theme.textMuted || "#6b7280" }}>
+              Store
+            </div>
+            <div className="space-y-3">
+              {bio.products.map((prod) => (
+                <BuyProductCard key={prod.id} product={prod} accent={accent} visitorId={visitorId} />
+              ))}
+            </div>
+          </div>
+        )}
+
         <footer className="mt-12 text-center text-xs text-navy-400">
           Created with <span className="font-medium" style={{ color: accent }}>CreatorOS</span>
         </footer>
@@ -109,6 +123,94 @@ function BannerImg({ url, accent }: { url: string; accent: string }) {
 }
 
 const roundedCls = "rounded-2xl";
+
+function BuyProductCard(props: {
+  product: PublicBioPage["products"][number];
+  accent: string;
+  visitorId: string;
+}) {
+  const { product, accent, visitorId } = props;
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function startCheckout(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/store/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id, email: email.trim(), visitorId }),
+      });
+      const j = await res.json();
+      if (j.ok && j.data?.url) {
+        window.location.href = j.data.url;
+        return;
+      }
+      setError(j.error?.message || "Checkout unavailable right now");
+    } catch {
+      setError("Network error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={`${roundedCls} bg-white px-5 py-4 shadow-soft`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-navy-900">{product.name}</div>
+          {product.description ? (
+            <div className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-navy-500">{product.description}</div>
+          ) : null}
+        </div>
+        <div className="text-sm font-bold" style={{ color: accent }}>
+          {formatPrice(product.price_cents, product.currency)}
+        </div>
+      </div>
+
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-bold text-white transition hover:opacity-90"
+          style={{ background: accent }}
+        >
+          Buy now
+        </button>
+      ) : (
+        <form onSubmit={startCheckout} className="mt-3 space-y-2">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@email.com"
+            className="w-full rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm text-navy-900 placeholder:text-navy-400 focus:border-brand-500 focus:outline-none"
+          />
+          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={busy}
+              className="flex-1 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+              style={{ background: accent }}
+            >
+              {busy ? "Redirecting…" : `Pay ${formatPrice(product.price_cents, product.currency)}`}
+            </button>
+            <button type="button" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2.5 text-sm font-medium text-navy-500 hover:text-navy-800">
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
 
 function BlockRenderer(props: {
   block: PublicBioPage["blocks"][number];
