@@ -22,12 +22,14 @@ export default async function BillingPage() {
   const pageCount = (row("SELECT COUNT(*) AS c FROM bio_pages WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
   const serviceCount = (row("SELECT COUNT(*) AS c FROM services WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
   const productCount = (row("SELECT COUNT(*) AS c FROM products WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
+  const courseCount = (row("SELECT COUNT(*) AS c FROM courses WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
 
   const meters = [
     { label: "Bio pages", used: pageCount, limit: limits.bioPages },
     { label: "Contacts", used: Math.max(contactCount, usage.contacts || 0), limit: limits.contacts },
     { label: "Bookings services", used: serviceCount, limit: limits.services },
     { label: "Products", used: productCount, limit: limits.products },
+    { label: "Courses", used: courseCount, limit: limits.courses },
     { label: "AI credits", used: usage.aiCredits || 0, limit: limits.aiCredits },
     { label: "Emails sent", used: usage.emails || 0, limit: limits.emailsPerMonth },
     { label: "Views / month", used: usage.viewsPerMonth || 0, limit: limits.viewsPerMonth },

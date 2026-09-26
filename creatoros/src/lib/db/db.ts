@@ -45,6 +45,10 @@ const MIGRATIONS: Array<{ id: number; up: (db: DatabaseSync) => void }> = [
     id: 5,
     up: (db) => addColumn(db, "payments", "order_id", "TEXT DEFAULT ''"),
   },
+  {
+    id: 6,
+    up: (db) => addColumn(db, "orders", "course_id", "TEXT DEFAULT ''"),
+  },
 ];
 
 function addColumn(db: DatabaseSync, table: string, column: string, ddl: string) {

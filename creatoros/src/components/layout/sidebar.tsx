@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Link2, CalendarCheck, Users, BarChart3, Wand2, Mail, Sparkles, Settings, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, Link2, CalendarCheck, Users, BarChart3, Wand2, Mail, Sparkles, Settings, ShoppingBag, GraduationCap, BookOpen } from "lucide-react";
 
 const NAV = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard },
   { href: "/app/bio", label: "Bio Pages", icon: Link2 },
   { href: "/app/store", label: "Store", icon: ShoppingBag },
+  { href: "/app/courses", label: "Courses", icon: GraduationCap },
+  { href: "/app/learn", label: "My Learning", icon: BookOpen },
   { href: "/app/leads", label: "Leads", icon: Users },
   { href: "/app/email", label: "Email", icon: Mail },
   { href: "/app/booking", label: "Booking", icon: CalendarCheck },

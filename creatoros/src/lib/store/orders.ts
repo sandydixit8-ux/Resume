@@ -2,6 +2,7 @@ import { all, row, run, newId, nowIso, nanoid } from "@/lib/db/db";
 import { trackEvent, hashVisitorId } from "@/lib/analytics/engine";
 import { bumpUsage } from "@/lib/usage";
 import { audit } from "@/lib/audit";
+import { ensureEnrollment } from "@/lib/courses/engine";
 
 export interface ProductRow {
   id: string;
@@ -26,6 +27,7 @@ export interface OrderRow {
   currency: string;
   provider: string;
   provider_session_id: string;
+  course_id: string;
   token: string;
   created_at: string;
   updated_at: string;
@@ -104,6 +106,62 @@ export function createOrderForProduct(
   return row<OrderRow>("SELECT * FROM orders WHERE id = ?", orderId)!;
 }
 
+/** Pending order for a paid course (enrollment happens on fulfillment). */
+export function createOrderForCourse(
+  course: { id: string; tenant_id: string; title: string; price_cents: number; currency: string },
+  input: { email: string; name?: string; visitorId?: string }
+): OrderRow {
+  const email = input.email.toLowerCase();
+
+  let contactId: string | null = null;
+  const existing = row<{ id: string }>("SELECT id FROM contacts WHERE tenant_id = ? AND email = ?", course.tenant_id, email);
+  if (existing) {
+    contactId = existing.id;
+    run("UPDATE contacts SET consent = 1, updated_at = ? WHERE id = ?", nowIso(), contactId);
+  } else {
+    contactId = newId("con");
+    run(
+      "INSERT INTO contacts (id, tenant_id, email, name, consent, source, tags, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 'course', '[]', ?, ?)",
+      contactId,
+      course.tenant_id,
+      email,
+      input.name ?? "",
+      nowIso(),
+      nowIso()
+    );
+    bumpUsage(course.tenant_id, "contacts");
+  }
+
+  const orderId = newId("ord");
+  run(
+    "INSERT INTO orders (id, tenant_id, contact_id, email, status, amount_cents, currency, provider, course_id, token, created_at, updated_at) VALUES (?, ?, ?, ?, 'pending', ?, ?, 'pending-provider', ?, ?, ?, ?)",
+    orderId,
+    course.tenant_id,
+    contactId,
+    email,
+    course.price_cents,
+    course.currency,
+    course.id,
+    nanoid(24),
+    nowIso(),
+    nowIso()
+  );
+  run(
+    "INSERT INTO order_items (id, order_id, tenant_id, product_id, title, quantity, unit_price_cents) VALUES (?, ?, ?, NULL, ?, 1, ?)",
+    newId("oit"),
+    orderId,
+    course.tenant_id,
+    course.title,
+    course.price_cents
+  );
+
+  if (input.visitorId) {
+    trackEvent({ tenantId: course.tenant_id, eventType: "checkout_started", visitorId: hashVisitorId(input.visitorId), ref: "course" });
+  }
+
+  return row<OrderRow>("SELECT * FROM orders WHERE id = ?", orderId)!;
+}
+
 /** Record the provider session on the order + its pending payment row. */
 export function attachCheckoutSession(orderId: string, providerName: string, sessionId: string): void {
   run("UPDATE orders SET provider = ?, provider_session_id = ?, updated_at = ? WHERE id = ?", providerName, sessionId, nowIso(), orderId);
@@ -134,7 +192,13 @@ export function fulfillOrder(orderId: string): FulfillResult {
   if (res.changes === 0) return "already_paid";
 
   run("UPDATE payments SET status = 'succeeded' WHERE order_id = ? AND status = 'pending'", orderId);
-  trackEvent({ tenantId: order.tenant_id, eventType: "purchase", ref: "store" });
+  if (order.course_id) {
+    ensureEnrollment(order.tenant_id, order.course_id, order.email, "purchase", {
+      orderId,
+      contactId: order.contact_id,
+    });
+  }
+  trackEvent({ tenantId: order.tenant_id, eventType: "purchase", ref: order.course_id ? "course" : "store" });
   bumpUsage(order.tenant_id, "sales");
   audit({ tenantId: order.tenant_id, action: "store.order_paid", resource: orderId });
   return "paid";

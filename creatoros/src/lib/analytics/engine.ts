@@ -3,7 +3,15 @@ import { createHash, randomBytes } from "node:crypto";
 
 const VISITOR_SALT = process.env.VISITOR_SALT || "creatoros-visitor";
 
-export type EventType = "page_view" | "lead" | "booking" | "link_click" | "checkout_started" | "purchase";
+export type EventType =
+  | "page_view"
+  | "lead"
+  | "booking"
+  | "link_click"
+  | "checkout_started"
+  | "purchase"
+  | "course_started"
+  | "course_completed";
 
 export interface TrackEventInput {
   tenantId: string;

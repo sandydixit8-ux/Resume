@@ -367,6 +367,7 @@ CREATE TABLE IF NOT EXISTS orders (
   currency    TEXT NOT NULL DEFAULT 'usd',
   provider    TEXT NOT NULL DEFAULT 'mock',
   provider_session_id TEXT NOT NULL DEFAULT '',
+  course_id   TEXT DEFAULT '',
   token       TEXT NOT NULL UNIQUE,
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL
@@ -394,3 +395,73 @@ CREATE TABLE IF NOT EXISTS webhook_events (
 CREATE INDEX IF NOT EXISTS idx_orders_tenant ON orders(tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_orders_session ON orders(provider_session_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+
+-- ============ Module C: course builder ============
+CREATE TABLE IF NOT EXISTS courses (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  profile_id  TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+  slug        TEXT NOT NULL,
+  title       TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  price_cents INTEGER NOT NULL DEFAULT 0,
+  currency    TEXT NOT NULL DEFAULT 'usd',
+  cover_url   TEXT NOT NULL DEFAULT '',
+  published   INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,
+  UNIQUE (tenant_id, slug)
+);
+
+CREATE TABLE IF NOT EXISTS course_sections (
+  id         TEXT PRIMARY KEY,
+  tenant_id  TEXT NOT NULL,
+  course_id  TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  title      TEXT NOT NULL,
+  position   INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS lessons (
+  id           TEXT PRIMARY KEY,
+  tenant_id    TEXT NOT NULL,
+  course_id    TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  section_id   TEXT NOT NULL REFERENCES course_sections(id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  type         TEXT NOT NULL DEFAULT 'text',  -- video | audio | pdf | text | quiz | external
+  content      TEXT NOT NULL DEFAULT '',
+  duration_min INTEGER NOT NULL DEFAULT 0,
+  position     INTEGER NOT NULL DEFAULT 0,
+  published    INTEGER NOT NULL DEFAULT 1,
+  created_at   TEXT NOT NULL,
+  updated_at   TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS enrollments (
+  id           TEXT PRIMARY KEY,
+  tenant_id    TEXT NOT NULL,
+  course_id    TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  contact_id   TEXT REFERENCES contacts(id) ON DELETE SET NULL,
+  order_id     TEXT,
+  email        TEXT NOT NULL,
+  source       TEXT NOT NULL DEFAULT 'free',  -- free | purchase | admin
+  completed_at TEXT,
+  created_at   TEXT NOT NULL,
+  UNIQUE (tenant_id, course_id, email)
+);
+
+CREATE TABLE IF NOT EXISTS lesson_progress (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  enrollment_id TEXT NOT NULL REFERENCES enrollments(id) ON DELETE CASCADE,
+  lesson_id     TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  completed     INTEGER NOT NULL DEFAULT 0,
+  score         INTEGER NOT NULL DEFAULT -1,
+  updated_at    TEXT NOT NULL,
+  UNIQUE (enrollment_id, lesson_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_courses_tenant ON courses(tenant_id, published);
+CREATE INDEX IF NOT EXISTS idx_sections_course ON course_sections(course_id, position);
+CREATE INDEX IF NOT EXISTS idx_lessons_course ON lessons(course_id, position);
+CREATE INDEX IF NOT EXISTS idx_enrollments_course ON enrollments(course_id);
