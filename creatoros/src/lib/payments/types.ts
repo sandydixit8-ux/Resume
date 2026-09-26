@@ -4,6 +4,18 @@ export interface CheckoutLine {
   quantity: number;
 }
 
+/** Recurring (monthly) subscription checkout for a plan upgrade. */
+export interface SubscriptionSessionInput {
+  planKey: string;
+  planName: string;
+  amountCents: number;
+  currency: string;
+  successUrl: string;
+  cancelUrl: string;
+  customerEmail?: string;
+  metadata: Record<string, string>;
+}
+
 export interface CheckoutSessionResult {
   sessionId: string;
   url: string;
@@ -34,6 +46,9 @@ export interface PaymentProvider {
     customerEmail?: string;
     metadata: Record<string, string>;
   }): Promise<CheckoutSessionResult>;
+  /** One-time checkout is not enough for plans — a recurring monthly session. */
+  createSubscriptionSession(input: SubscriptionSessionInput): Promise<CheckoutSessionResult>;
+  cancelSubscription(providerId: string): Promise<{ subscriptionId: string }>;
   /** Verify webhook signature and parse the event. Returns null when invalid. */
   verifyWebhook(rawBody: string, signature: string): Promise<ProviderWebhookEvent | null>;
   getCheckoutPaymentStatus(sessionId: string): Promise<PaymentStatus>;

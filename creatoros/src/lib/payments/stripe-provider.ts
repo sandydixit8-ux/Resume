@@ -43,6 +43,39 @@ export const stripeProvider: PaymentProvider = {
     return { sessionId: session.id, url: session.url };
   },
 
+  async createSubscriptionSession({ planName, amountCents, currency, successUrl, cancelUrl, customerEmail, metadata }): Promise<CheckoutSessionResult> {
+    const stripe = client();
+    if (!stripe) throw new Error("Stripe is not configured");
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: amountCents,
+            recurring: { interval: "month" },
+            product_data: { name: planName },
+          },
+        },
+      ],
+      success_url: `${successUrl}${successUrl.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl,
+      customer_email: customerEmail || undefined,
+      metadata,
+      subscription_data: { metadata },
+    });
+    if (!session.url) throw new Error("Stripe did not return a checkout URL");
+    return { sessionId: session.id, url: session.url };
+  },
+
+  async cancelSubscription(providerId: string): Promise<{ subscriptionId: string }> {
+    const stripe = client();
+    if (!stripe) throw new Error("Stripe is not configured");
+    const sub = await stripe.subscriptions.update(providerId, { cancel_at_period_end: true });
+    return { subscriptionId: sub.id };
+  },
+
   async verifyWebhook(rawBody, signature): Promise<ProviderWebhookEvent | null> {
     const stripe = client();
     const secret = process.env.STRIPE_WEBHOOK_SECRET;

@@ -31,6 +31,12 @@ const unconfiguredProvider: PaymentProvider = {
   async createCheckoutSession() {
     throw new Error("Payments are not configured");
   },
+  async createSubscriptionSession() {
+    throw new Error("Payments are not configured");
+  },
+  async cancelSubscription() {
+    throw new Error("Payments are not configured");
+  },
   async verifyWebhook() {
     return null;
   },

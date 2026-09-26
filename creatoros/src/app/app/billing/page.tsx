@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
-import { Check } from "lucide-react";
+import { Check, CreditCard, XCircle } from "lucide-react";
 import { getSession } from "@/lib/auth/get-session";
 import { row } from "@/lib/db/db";
 import { getLimits, PLAN_PRICES } from "@/lib/plans";
 import { allUsage } from "@/lib/usage";
+import { activeSubscription } from "@/lib/billing/subscriptions";
+import { paymentConfigured } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,9 @@ export default async function BillingPage() {
   const currentPlan = org?.plan ?? "free";
   const usage = allUsage(s.org.id);
   const limits = getLimits(currentPlan);
+  const sub = activeSubscription(s.org.id);
+  const paymentsWired = paymentConfigured();
+  const isMock = sub?.provider && sub.provider !== "stripe";
 
   const contactCount = (row("SELECT COUNT(*) AS c FROM contacts WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
   const pageCount = (row("SELECT COUNT(*) AS c FROM bio_pages WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
@@ -41,6 +46,27 @@ export default async function BillingPage() {
         <h1 className="text-2xl font-bold text-navy-950">Billing &amp; plan</h1>
         <p className="mt-1 text-sm text-navy-500">You&apos;re on the <span className="font-medium capitalize text-navy-900">{currentPlan}</span> plan.</p>
       </div>
+
+      {sub && (
+        <div className={`card flex flex-wrap items-center justify-between gap-4 p-5 ${isMock ? "border-amber-200 bg-amber-50/50" : "border-emerald-200 bg-emerald-50/50"}`}>
+          <div className="flex items-center gap-3">
+            <CreditCard className="h-6 w-6 text-navy-400" />
+            <div>
+              <div className="font-semibold capitalize text-navy-900">{sub.plan} plan · {sub.status}</div>
+              <div className="text-xs text-navy-500">
+                via {sub.provider}
+                {sub.current_period_end && <> · renewed {sub.current_period_end.slice(0, 10)}</>}
+                {isMock && <> · simulated (no Stripe keys)</>}
+              </div>
+            </div>
+          </div>
+          <form method="POST" action="/api/billing/cancel">
+            <button type="submit" className="btn-secondary !py-2 text-sm text-red-600">
+              <XCircle className="h-4 w-4" /> Cancel subscription
+            </button>
+          </form>
+        </div>
+      )}
 
       <div className="card p-6">
         <h2 className="mb-4 font-semibold text-navy-900">Usage this month</h2>
@@ -103,7 +129,9 @@ export default async function BillingPage() {
       </div>
 
       <p className="text-center text-xs text-navy-400">
-        Stripe billing is wired when <code className="rounded bg-navy-50 px-1">STRIPE_SECRET_KEY</code> is set. Currently plan changes are simulated for development.
+        {paymentsWired
+          ? "Plan upgrades are billed through Stripe subscriptions and applied via webhook."
+          : "Stripe billing activates when STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET are set. Upgrades are simulated for development until then."}
       </p>
     </div>
   );

@@ -2,12 +2,18 @@ import { NextRequest } from "next/server";
 import { run, row, nowIso } from "@/lib/db/db";
 import { getPaymentProvider } from "@/lib/payments";
 import { fulfillOrderBySession, markOrderFailed, type FulfillResult } from "@/lib/store/orders";
+import { applySubscription } from "@/lib/billing/subscriptions";
 import { ok, fail } from "@/lib/http";
 import { audit } from "@/lib/audit";
 
+function str(v: unknown): string {
+  return typeof v === "string" ? v : "";
+}
+
 /**
  * Payment provider webhook (spec §9): signature-verified, idempotent,
- * records every event in webhook_events before processing.
+ * records every event in webhook_events before processing. Handles both
+ * one-time product/course purchases and recurring plan subscriptions.
  */
 export async function POST(req: NextRequest) {
   const provider = getPaymentProvider();
@@ -35,13 +41,74 @@ export async function POST(req: NextRequest) {
     return ok({ received: true, duplicate: true });
   }
 
-  const sessionId = typeof event.data.id === "string" ? event.data.id : "";
-  let result: FulfillResult | "ignored" = "ignored";
+  const sessionId = str(event.data.id);
+  let result: FulfillResult | "subscription_applied" | "ignored" = "ignored";
 
   switch (event.type) {
-    case "checkout.session.completed":
-      if (sessionId) result = fulfillOrderBySession(sessionId);
+    case "checkout.session.completed": {
+      // A subscription session carries mode="subscription" + metadata.
+      if (event.data.mode === "subscription") {
+        const metadata = (event.data.metadata ?? {}) as Record<string, unknown>;
+        const tenantId = str(metadata.tenantId);
+        const plan = str(metadata.plan);
+        if (tenantId && plan) {
+          applySubscription({
+            tenantId,
+            plan,
+            provider: provider.name,
+            providerId: str(event.data.subscription),
+            customerId: str(event.data.customer),
+            status: "active",
+            currentPeriodEnd: str(event.data.currentPeriodEnd) || null,
+          });
+          audit({ tenantId, action: "billing.webhook_subscription", resource: plan, meta: { event: event.id } });
+          result = "subscription_applied";
+        }
+      } else if (sessionId) {
+        result = fulfillOrderBySession(sessionId);
+      }
       break;
+    }
+    case "customer.subscription.created":
+    case "customer.subscription.updated": {
+      const sub = event.data as Record<string, unknown>;
+      const metadata = (sub.metadata ?? {}) as Record<string, unknown>;
+      const tenantId = str(metadata.tenantId);
+      if (tenantId) {
+        const plan = str(metadata.plan) || "free";
+        const status = str(sub.status);
+        const providerId = str(sub.id);
+        applySubscription({
+          tenantId,
+          plan,
+          provider: provider.name,
+          providerId,
+          customerId: str(sub.customer),
+          status: status || "active",
+          currentPeriodEnd: str(sub.current_period_end) || null,
+        });
+        result = "subscription_applied";
+      }
+      break;
+    }
+    case "customer.subscription.deleted": {
+      const sub = event.data as Record<string, unknown>;
+      const metadata = (sub.metadata ?? {}) as Record<string, unknown>;
+      const tenantId = str(metadata.tenantId);
+      if (tenantId) {
+        applySubscription({
+          tenantId,
+          plan: str(metadata.plan) || "free",
+          provider: provider.name,
+          providerId: str(sub.id),
+          customerId: str(sub.customer),
+          status: "canceled",
+        });
+        audit({ tenantId, action: "billing.webhook_subscription_deleted", resource: str(sub.id) });
+        result = "subscription_applied";
+      }
+      break;
+    }
     case "checkout.session.expired":
       if (sessionId) {
         const order = row<{ id: string }>("SELECT id FROM orders WHERE provider_session_id = ? AND status = 'pending'", sessionId);

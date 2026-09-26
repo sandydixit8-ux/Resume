@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   tenant_id       TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   provider        TEXT NOT NULL DEFAULT 'stripe',
   provider_id     TEXT,
+  customer_id     TEXT,
   status          TEXT NOT NULL DEFAULT 'active',  -- active | trialing | past_due | canceled
   plan            TEXT NOT NULL,
   current_period_end TEXT,

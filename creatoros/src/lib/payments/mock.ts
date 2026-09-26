@@ -1,5 +1,5 @@
 import { nanoid } from "@/lib/db/db";
-import type { CheckoutSessionResult, PaymentProvider, PaymentStatus, ProviderWebhookEvent } from "./types";
+import type { CheckoutSessionResult, PaymentProvider, PaymentStatus, ProviderWebhookEvent, SubscriptionSessionInput } from "./types";
 
 /**
  * Development-only payment provider. Creates "cs_mock_*" sessions whose
@@ -20,6 +20,16 @@ export const mockProvider: PaymentProvider = {
     const sessionId = `cs_mock_${nanoid(16)}`;
     const sep = successUrl.includes("?") ? "&" : "?";
     return { sessionId, url: `${successUrl}${sep}session_id=${sessionId}` };
+  },
+
+  async createSubscriptionSession(input: SubscriptionSessionInput): Promise<CheckoutSessionResult> {
+    const sessionId = `cs_mock_${nanoid(16)}`;
+    const sep = input.successUrl.includes("?") ? "&" : "?";
+    return { sessionId, url: `${input.successUrl}${sep}session_id=${sessionId}` };
+  },
+
+  async cancelSubscription(): Promise<{ subscriptionId: string }> {
+    return { subscriptionId: `sub_mock_${nanoid(12)}` };
   },
 
   async verifyWebhook(rawBody): Promise<ProviderWebhookEvent | null> {
