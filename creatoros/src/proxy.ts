@@ -1,18 +1,60 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const SECURITY_HEADERS: Record<string, string> = {
-  "X-Frame-Options": "DENY",
-  "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  "X-XSS-Protection": "0",
-};
+const isProd = process.env.NODE_ENV === "production";
 
-export function proxy() {
+// Pragmatic CSP: 'unsafe-inline' is required because Next.js emits inline
+// bootstrap scripts (self.__next_f) and inline style attributes. `frame-src`,
+// `media-src` and `img-src` allow user-supplied media/video/avatar URLs.
+const CSP = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https: http:",
+  "media-src 'self' data: blob: https: http:",
+  "frame-src 'self' https: http:",
+  "connect-src 'self' https://api.stripe.com https://js.stripe.com https://checkout.stripe.com ws: wss:",
+  "font-src 'self' data:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  ...(isProd ? ["upgrade-insecure-requests"] : []),
+].join("; ");
+
+// Requests to these mutation endpoints may legitimately originate cross-site
+// (Stripe webhooks, embedded lead-capture/unsubscribe/tracking).
+const PUBLIC_MUTATIONS = new Set([
+  "/api/webhooks/stripe",
+  "/api/leads/capture",
+  "/api/email/unsubscribe",
+  "/api/track",
+]);
+
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+export function proxy(request: NextRequest) {
   const response = NextResponse.next();
-  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
+  response.headers.set("Content-Security-Policy", CSP);
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  response.headers.set("X-XSS-Protection", "0");
+  if (isProd) {
+    response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  }
+
+  // Cross-site request forgery defense for session-authenticated APIs:
+  // reject cross-site mutating calls unless the endpoint is public by design.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    const method = request.method.toUpperCase();
+    const isPublic = [...PUBLIC_MUTATIONS].some((p) => request.nextUrl.pathname === p || request.nextUrl.pathname.startsWith(`${p}/`));
+    const site = request.headers.get("sec-fetch-site");
+    if (!isPublic && MUTATING_METHODS.has(method) && site === "cross-site") {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+  }
+
   return response;
 }
 
