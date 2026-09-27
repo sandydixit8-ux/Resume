@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/get-session";
 import { row } from "@/lib/db/db";
 import { ProfileForm } from "@/components/settings/profile-form";
+import { PrivacySection } from "@/components/settings/privacy-section";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function SettingsPage() {
         <p className="mt-1 text-sm text-navy-500">Your public profile — this powers your bio page.</p>
       </div>
       <ProfileForm initial={initial} hasProfile={!!p} />
+      <PrivacySection />
     </div>
   );
 }

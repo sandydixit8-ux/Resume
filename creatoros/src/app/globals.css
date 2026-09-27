@@ -57,6 +57,10 @@ body {
   @apply btn border border-navy-200 bg-white text-navy-800 hover:bg-navy-50;
 }
 
+.btn-danger {
+  @apply btn border border-red-200 bg-red-600 text-white hover:bg-red-700;
+}
+
 .input {
   @apply w-full rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm text-navy-900 placeholder:text-navy-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100;
 }
