@@ -57,7 +57,7 @@ export function BioEditor(props: {
       const res = await fetch(`/api/bio/${props.pageId}/blocks`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blocks: blocks.map((b, i) => ({ id: b.id, position: i, payload: b.payload, active: b.active })) }),
+        body: JSON.stringify({ blocks: blocks.map((b, i) => ({ id: b.id, type: b.type, position: i, payload: b.payload, active: b.active })) }),
       });
       if (res.ok) {
         const pageRes = await fetch(`/api/bio/${props.pageId}`, {

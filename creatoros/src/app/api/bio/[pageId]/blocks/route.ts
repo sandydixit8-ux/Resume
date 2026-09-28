@@ -2,15 +2,20 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth/get-session";
 import { ok, err, readJson } from "@/lib/http";
-import { all, row, run, nowIso } from "@/lib/db/db";
+import { all, row, run, newId, nowIso } from "@/lib/db/db";
+import { getLimits, withinLimit } from "@/lib/plans";
+import { getUsage, bumpUsage } from "@/lib/usage";
 import { audit } from "@/lib/audit";
 import { can } from "@/lib/auth/rbac";
+
+const BLOCK_TYPES = ["profile", "bio", "link", "product", "booking", "email_capture", "cta", "social"] as const;
 
 const updateSchema = z.object({
   blocks: z
     .array(
       z.object({
         id: z.string().min(1),
+        type: z.enum(BLOCK_TYPES).optional(),
         position: z.number().int().min(0),
         payload: z.record(z.string(), z.unknown()).optional(),
         active: z.boolean().optional(),
@@ -39,7 +44,29 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ pageId: str
 
   let changed = 0;
   for (const b of parsed.data.blocks) {
-    if (!validIds.has(b.id)) continue;
+    if (!validIds.has(b.id)) {
+      const type = b.type ?? "link";
+      if (type === "link") {
+        const limits = getLimits(s.org.plan);
+        const linkCount = getUsage(s.org.id, "links");
+        if (!withinLimit(linkCount, limits.links)) return err.conflict("Link limit reached for this plan. Delete some links or upgrade.");
+      }
+      run(
+        "INSERT INTO bio_blocks (id, tenant_id, page_id, type, position, active, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        newId("blk"),
+        s.org.id,
+        pageId,
+        type,
+        b.position,
+        b.active === false ? 0 : 1,
+        JSON.stringify(b.payload ?? {}),
+        nowIso(),
+        nowIso()
+      );
+      if (type === "link") bumpUsage(s.org.id, "links");
+      changed++;
+      continue;
+    }
     if (b.payload !== undefined) {
       run("UPDATE bio_blocks SET payload = ?, position = ?, updated_at = ? WHERE id = ?", JSON.stringify(b.payload), b.position, nowIso(), b.id);
     } else {

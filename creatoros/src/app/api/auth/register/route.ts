@@ -18,6 +18,15 @@ function slugify(name: string): string {
   return base || "creator";
 }
 
+function uniqueUsername(base: string): string {
+  if (!row("SELECT id FROM profiles WHERE username = ?", base)) return base;
+  for (let i = 2; i < 1000; i++) {
+    const candidate = `${base}-${i}`;
+    if (!row("SELECT id FROM profiles WHERE username = ?", candidate)) return candidate;
+  }
+  return `${base}-${newId("u").slice(-6)}`;
+}
+
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   const rl = rateLimit(rateKey("register", ip), 10);
@@ -69,7 +78,7 @@ export async function POST(req: NextRequest) {
         profileId,
         orgId,
         uid,
-        "", // username chosen during onboarding; ensure uniqueness then
+        uniqueUsername(slugify(name)),
         name,
         nowIso(),
         nowIso()
