@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Link2, CalendarCheck, Users, UsersRound, BarChart3, Wand2, Mail, Sparkles, Settings, ShoppingBag, GraduationCap, BookOpen, LayoutTemplate } from "lucide-react";
+import { LayoutDashboard, Link2, CalendarCheck, Users, UsersRound, BarChart3, Wand2, Mail, Sparkles, Settings, ShoppingBag, GraduationCap, BookOpen, LayoutTemplate, ShieldCheck } from "lucide-react";
 
 const NAV = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard },
@@ -21,8 +21,9 @@ const NAV = [
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar({ orgName, plan }: { orgName: string; plan: string }) {
+export function Sidebar({ orgName, plan, isAdmin }: { orgName: string; plan: string; isAdmin: boolean }) {
   const pathname = usePathname();
+  const nav = isAdmin ? [...NAV, { href: "/app/admin", label: "Admin", icon: ShieldCheck }] : NAV;
 
   return (
     <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-navy-100 bg-white lg:flex">
@@ -31,7 +32,7 @@ export function Sidebar({ orgName, plan }: { orgName: string; plan: string }) {
         <span>Creator<span className="text-brand-600">OS</span></span>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {NAV.map((item) => {
+        {nav.map((item) => {
           const active = pathname === item.href || (item.href !== "/app" && pathname.startsWith(item.href));
           return (
             <Link
