@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `Book ${service.name} with ${bio.profile.displayName || bio.profile.username}`,
     description: `Schedule a session with ${bio.profile.displayName || bio.profile.username}.`,
-    alternates: { canonical: `${SITE_URL}/@${username}/book/${serviceSlug}` },
+    alternates: { canonical: `${SITE_URL}/u/${username}/book/${serviceSlug}` },
   };
 }
 

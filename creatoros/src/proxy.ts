@@ -33,6 +33,21 @@ const PUBLIC_MUTATIONS = new Set([
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export function proxy(request: NextRequest) {
+  // Alias legacy @username URLs (creator.os/@user) to the /u/user routes so
+  // old shared links keep working and the public surface matches the canonical form.
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith("/@")) {
+    const rest = pathname.slice(2) || "";
+    let rewritten: string | null = null;
+    if (rest.includes("/")) {
+      const [username, ...tail] = rest.split("/");
+      rewritten = `/u/${username}/${tail.join("/")}`;
+    } else if (rest) {
+      rewritten = `/u/${rest}`;
+    }
+    if (rewritten) return NextResponse.rewrite(request.nextUrl.origin + rewritten);
+  }
+
   const response = NextResponse.next();
   response.headers.set("Content-Security-Policy", CSP);
   response.headers.set("X-Frame-Options", "DENY");

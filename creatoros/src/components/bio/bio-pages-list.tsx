@@ -32,7 +32,7 @@ export function BioPagesList({ pages, username }: { pages: BioPageRow[]; usernam
             <p className="mt-1 text-sm text-navy-500">
               {username ? (
                 <>
-                  creatoros.app/@<span className="font-medium text-brand-600">{username}</span>{p.slug ? `/${p.slug}` : ""}
+                  creatoros.app/u/<span className="font-medium text-brand-600">{username}</span>{p.slug ? `/${p.slug}` : ""}
                 </>
               ) : (
                 "Username not set yet"
@@ -42,7 +42,7 @@ export function BioPagesList({ pages, username }: { pages: BioPageRow[]; usernam
           <div className="flex items-center gap-2">
             {username && (
               <>
-                <Link href={`/@${username}${p.slug ? `/${p.slug}` : ""}`} target="_blank" className="btn-secondary !px-3 !py-1.5 text-xs">
+                <Link href={`/u/${username}${p.slug ? `/${p.slug}` : ""}`} target="_blank" className="btn-secondary !px-3 !py-1.5 text-xs">
                   <Link2 className="h-3.5 w-3.5" /> Open
                 </Link>
                 <a className="btn-secondary !px-3 !py-1.5 text-xs" href={`/api/bio/${p.id}/qr`} target="_blank" rel="noreferrer">

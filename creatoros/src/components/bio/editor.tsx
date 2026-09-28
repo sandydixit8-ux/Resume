@@ -103,7 +103,7 @@ export function BioEditor(props: {
     });
   }
 
-  const publicUrl = props.username ? `/@${props.username}${page.slug ? `/${page.slug}` : ""}` : null;
+  const publicUrl = props.username ? `/u/${props.username}${page.slug ? `/${page.slug}` : ""}` : null;
 
   return (
     <div className="space-y-6">

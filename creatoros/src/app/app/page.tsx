@@ -40,7 +40,7 @@ export default async function DashboardPage() {
         </div>
         <div className="flex gap-3">
           {profile?.username && (
-            <Link href={`/@${profile.username}`} target="_blank" className="btn-secondary">
+            <Link href={`/u/${profile.username}`} target="_blank" className="btn-secondary">
               <Link2 className="h-4 w-4" /> View bio page
             </Link>
           )}

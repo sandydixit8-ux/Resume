@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
   const bio = getPublicBioPage(username);
   if (!bio) return { title: "Not found" };
-  const url = `${SITE_URL}/@${bio.profile.username}`;
+  const url = `${SITE_URL}/u/${bio.profile.username}`;
   return {
     title: `${bio.profile.displayName || bio.profile.username} — links, products & more`,
     description: bio.profile.bio || `Check out ${bio.profile.displayName}`,

@@ -266,8 +266,8 @@ function BlockRenderer(props: {
     case "booking":
       return (
         <a
-          href={`${SITE_URL}/@${bio.profile.username}/book/${p.serviceSlug || ""}`}
-          onClick={() => trackLink(`${SITE_URL}/@${bio.profile.username}/book/${p.serviceSlug || ""}`)}
+          href={`${SITE_URL}/u/${bio.profile.username}/book/${p.serviceSlug || ""}`}
+          onClick={() => trackLink(`${SITE_URL}/u/${bio.profile.username}/book/${p.serviceSlug || ""}`)}
           className={`${roundedCls} flex items-center justify-center gap-2 px-5 py-4 text-sm font-bold text-white shadow-soft transition hover:scale-[1.02]`}
           style={{ background: accent }}
         >

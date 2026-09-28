@@ -22,8 +22,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ pageId: st
   const profile = getProfileForUser(s.org.id, s.user.id);
   if (!profile) return err.notFound();
 
-  const pageSlugPrefix = page.slug ? `${page.slug}/` : "";
-  const url = `${SITE}/@${profile.username}/${pageSlugPrefix}`;
+  const url = `${SITE}/u/${profile.username}${page.slug ? `/${page.slug}` : ""}`;
   const svg = await QRCode.toString(url, { type: "svg", margin: 2, width: 240, color: { dark: "#141a2b", light: "#ffffff" } });
 
   return new Response(svg, {

@@ -25,7 +25,7 @@ export default async function StorePage() {
           <p className="mt-1 text-sm text-navy-500">Products sold from your link-in-bio page. Payments via Stripe.</p>
         </div>
         <span className="btn-secondary">
-          <ShoppingBag className="h-4 w-4" /> {profile?.username ? `/@${profile.username}` : ""}
+          <ShoppingBag className="h-4 w-4" /> {profile?.username ? `/u/${profile.username}` : ""}
         </span>
       </div>
 
