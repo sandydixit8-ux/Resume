@@ -3,10 +3,12 @@ import Link from "next/link";
 import { ArrowRight, CalendarCheck, UserPlus } from "lucide-react";
 import { getSession } from "@/lib/auth/get-session";
 import { summary, timeSeries, breakdownBy } from "@/lib/analytics/engine";
+import { revenueSnapshot, revenueMonthlySeries, lastChargeAt } from "@/lib/analytics/money";
 import { row } from "@/lib/db/db";
 import { SummaryCards } from "@/components/analytics/summary-cards";
 import { ViewsChart, DonutChart } from "@/components/analytics/charts";
 import { SourcesExplorer } from "@/components/analytics/sources-explorer";
+import { RevenueChart, RevenueBreakdown } from "@/components/analytics/revenue-chart";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,10 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
   const pageCount = (row("SELECT COUNT(*) AS c FROM bio_pages WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
   const recentBookings = (row("SELECT COUNT(*) AS c FROM bookings WHERE tenant_id = ? AND status = 'confirmed'", s.org.id) as { c: number })?.c ?? 0;
+
+  const revenue = revenueSnapshot(s.org.id, days);
+  const revenueSeries = revenueMonthlySeries(s.org.id, 6);
+  const lastCharge = lastChargeAt(s.org.id);
 
   return (
     <div className="space-y-8">
@@ -108,6 +114,31 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <p className="mt-3 text-sm text-navy-500">{recentBookings} total confirmed</p>
         </div>
       </div>
+
+      <section className="card p-6">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="font-semibold text-navy-900">Revenue</h2>
+            <p className="mt-1 text-sm text-navy-500">Monthly recurring and one-time income.</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div>
+              <div className="text-xs text-navy-400">MRR</div>
+              <div className="text-xl font-bold text-navy-950">${Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(revenue.mrrCents / 100)} · ₹{Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format((revenue.mrrCents / 100) * 84)}</div>
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-navy-900">{revenue.subscriptionsActive} active subscription{revenue.subscriptionsActive === 1 ? "" : "s"}</div>
+              <div className="text-xs text-navy-400">
+                {lastCharge ? `Last charge ${new Date(lastCharge).toLocaleDateString()}` : "No charges yet"}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-8 lg:grid-cols-2">
+          <RevenueChart data={revenueSeries} />
+          <RevenueBreakdown sources={revenue.sources} />
+        </div>
+      </section>
     </div>
   );
 }
