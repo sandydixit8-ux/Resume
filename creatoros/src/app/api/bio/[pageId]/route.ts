@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getSession } from "@/lib/auth/get-session";
 import { ok, err, readJson } from "@/lib/http";
 import { all, row, run, newId, nowIso } from "@/lib/db/db";
+import { getLimits, withinLimit } from "@/lib/plans";
+import { getUsage, bumpUsage } from "@/lib/usage";
 import { audit } from "@/lib/audit";
 import { can } from "@/lib/auth/rbac";
 
@@ -102,6 +104,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ pageId: st
   if (!parsed.success) return err.validation(parsed.error.flatten().fieldErrors);
 
   const nextPos = (all<{ m: number }>("SELECT COALESCE(MAX(position), -1) AS m FROM bio_blocks WHERE page_id = ?", pageId)[0]?.m ?? -1) + 1;
+  if (parsed.data.type === "link") {
+    const limits = getLimits(s.org.plan);
+    const linkCount = getUsage(s.org.id, "links");
+    if (!withinLimit(linkCount, limits.links)) {
+      return err.conflict(`Link limit reached for the ${s.org.plan} plan. Upgrade to add more links.`);
+    }
+  }
   const blockId = newId("blk");
   run(
     "INSERT INTO bio_blocks (id, tenant_id, page_id, type, payload, position, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)",
@@ -114,6 +123,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ pageId: st
     nowIso(),
     nowIso()
   );
+  if (parsed.data.type === "link") bumpUsage(s.org.id, "links");
   audit({ tenantId: s.org.id, userId: s.user.id, action: "bio.block_add", resource: blockId, meta: { type: parsed.data.type }, ip: req.headers.get("x-forwarded-for") || undefined });
   return ok({ blockId, position: nextPos });
 }

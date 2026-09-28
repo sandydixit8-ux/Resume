@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getSession } from "@/lib/auth/get-session";
 import { ok, err, readJson } from "@/lib/http";
 import { all, row, run, newId, nowIso } from "@/lib/db/db";
+import { getLimits, withinLimit } from "@/lib/plans";
+import { getUsage, bumpUsage } from "@/lib/usage";
 import { audit } from "@/lib/audit";
 import { can } from "@/lib/auth/rbac";
 
@@ -46,6 +48,12 @@ export async function POST(req: NextRequest) {
   const dup = row("SELECT id FROM services WHERE tenant_id = ? AND slug = ?", s.org.id, parsed.data.slug);
   if (dup) return err.conflict("A service with this slug already exists");
 
+  const limits = getLimits(s.org.plan);
+  const usedServices = getUsage(s.org.id, "services");
+  if (!withinLimit(usedServices, limits.services)) {
+    return err.conflict(`Service limit reached for the ${s.org.plan} plan. Upgrade to add more.`);
+  }
+
   const id = newId("svc");
   run(
     "INSERT INTO services (id, tenant_id, name, description, duration_min, price_cents, currency, buffer_min, active, slug, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
@@ -61,6 +69,7 @@ export async function POST(req: NextRequest) {
     nowIso(),
     nowIso()
   );
+  bumpUsage(s.org.id, "services");
   audit({ tenantId: s.org.id, userId: s.user.id, action: "booking.service_create", resource: id, ip: req.headers.get("x-forwarded-for") || undefined });
   return ok({ serviceId: id });
 }
