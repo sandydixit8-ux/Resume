@@ -24,14 +24,16 @@ export type Permission =
   | "courses:write"
   | "billing:read"
   | "billing:write"
+  | "community:read"
+  | "community:write"
   | "settings:read"
   | "settings:write";
 
 const PERMISSIONS: Record<Role, Permission[]> = {
-  viewer: ["bio:read", "booking:read", "leads:read", "analytics:read", "email:read", "store:read", "courses:read"],
-  editor: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "email:read", "email:write", "store:read", "store:write", "courses:read", "courses:write"],
-  admin: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "coach:read", "email:read", "email:write", "store:read", "store:write", "courses:read", "courses:write", "settings:read", "settings:write"],
-  owner: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "coach:read", "email:read", "email:write", "store:read", "store:write", "courses:read", "courses:write", "billing:read", "billing:write", "settings:read", "settings:write"],
+  viewer: ["bio:read", "booking:read", "leads:read", "analytics:read", "email:read", "store:read", "courses:read", "community:read"],
+  editor: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "email:read", "email:write", "store:read", "store:write", "courses:read", "courses:write", "community:read", "community:write"],
+  admin: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "coach:read", "email:read", "email:write", "store:read", "store:write", "courses:read", "courses:write", "community:read", "community:write", "settings:read", "settings:write"],
+  owner: ["bio:read", "bio:write", "booking:read", "booking:write", "leads:read", "leads:write", "analytics:read", "coach:read", "email:read", "email:write", "store:read", "store:write", "courses:read", "courses:write", "billing:read", "billing:write", "community:read", "community:write", "settings:read", "settings:write"],
 };
 
 export function can(role: Role, perm: Permission): boolean {

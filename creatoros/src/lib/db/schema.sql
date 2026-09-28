@@ -290,6 +290,25 @@ CREATE TABLE IF NOT EXISTS posts (
   created_at  TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS post_comments (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  post_id     TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  author_id   TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  created_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS post_reactions (
+  id          TEXT PRIMARY KEY,
+  tenant_id   TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  post_id     TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL,
+  emoji       TEXT NOT NULL DEFAULT '👍',
+  created_at  TEXT NOT NULL,
+  UNIQUE (post_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS automation_workflows (
   id          TEXT PRIMARY KEY,
   tenant_id   TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
