@@ -4,6 +4,9 @@ import { ok, err, readJson, getClientIp, userAgentInfo } from "@/lib/http";
 import { getPublicBioPage } from "@/lib/bio/page";
 import { trackEvent, hashVisitorId, newVisitorId } from "@/lib/analytics/engine";
 import { rateLimit, rateKey } from "@/lib/security/rate-limit";
+import { row } from "@/lib/db/db";
+import { getLimits } from "@/lib/plans";
+import { getUsage, bumpUsage } from "@/lib/usage";
 
 const trackSchema = z.object({
   username: z.string().min(1).max(60),
@@ -29,6 +32,18 @@ export async function POST(req: NextRequest) {
 
   const { device, ref } = userAgentInfo(req);
   const visitorId = parsed.data.visitorId ? hashVisitorId(parsed.data.visitorId) : newVisitorId();
+
+  // Soft-enforce the monthly views quota: the page still renders, tracking just
+  // stops counting once the plan limit is exceeded.
+  if (parsed.data.eventType === "page_view") {
+    const plan = (row("SELECT plan FROM organizations WHERE id = ?", bio.tenantId) as { plan?: string } | undefined)?.plan ?? "free";
+    const limits = getLimits(plan);
+    const usage = getUsage(bio.tenantId, "views");
+    if (limits.viewsPerMonth !== -1 && usage >= limits.viewsPerMonth) {
+      return ok({ visitorId: parsed.data.visitorId ? visitorId : undefined, tracked: false, quota: true });
+    }
+    bumpUsage(bio.tenantId, "views");
+  }
 
   trackEvent({
     tenantId: bio.tenantId,
