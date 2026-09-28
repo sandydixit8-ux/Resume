@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "db:init": "tsx scripts/init-db.ts",
     "db:seed": "tsx scripts/seed.ts"
   },
@@ -27,6 +28,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.10.2",
     "@types/qrcode": "^1.5.6",
