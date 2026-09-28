@@ -1,5 +1,6 @@
 import { all, row, run, newId, nowIso } from "@/lib/db/db";
 import { audit } from "@/lib/audit";
+import { createNotification } from "@/lib/notifications/engine";
 
 export interface CommunitySummary {
   id: string;
@@ -107,7 +108,7 @@ export function deletePost(tenantId: string, userId: string, postId: string, man
 }
 
 export function toggleReaction(tenantId: string, userId: string, postId: string, emoji = "👍"): { reacted: boolean; count: number } {
-  const post = row<{ id: string }>("SELECT id FROM posts WHERE id = ? AND tenant_id = ?", postId, tenantId);
+  const post = row<{ id: string; author_id: string }>("SELECT id, author_id FROM posts WHERE id = ? AND tenant_id = ?", postId, tenantId);
   if (!post) throw new Error("post_not_found");
   const existing = row<{ id: string }>("SELECT id FROM post_reactions WHERE post_id = ? AND user_id = ?", postId, userId);
   if (existing) {
@@ -122,13 +123,16 @@ export function toggleReaction(tenantId: string, userId: string, postId: string,
       emoji,
       nowIso()
     );
+    if (post.author_id !== userId) {
+      createNotification(tenantId, post.author_id, "New reaction on your post", "Someone liked what you shared.");
+    }
   }
   const count = (row<{ c: number }>("SELECT COUNT(*) AS c FROM post_reactions WHERE post_id = ?", postId) as { c: number }).c;
   return { reacted: !existing, count };
 }
 
 export function createComment(tenantId: string, userId: string, postId: string, body: string): { id: string } {
-  const post = row<{ id: string }>("SELECT id FROM posts WHERE id = ? AND tenant_id = ?", postId, tenantId);
+  const post = row<{ id: string; author_id: string }>("SELECT id, author_id FROM posts WHERE id = ? AND tenant_id = ?", postId, tenantId);
   if (!post) throw new Error("post_not_found");
   const id = newId("cmt");
   run(
@@ -140,6 +144,9 @@ export function createComment(tenantId: string, userId: string, postId: string, 
     body.trim(),
     nowIso()
   );
+  if (post.author_id !== userId) {
+    createNotification(tenantId, post.author_id, "New comment on your post", body.trim().slice(0, 100));
+  }
   audit({ tenantId, userId, action: "community.comment", resource: id, meta: { postId } });
   return { id };
 }

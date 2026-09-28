@@ -4,6 +4,7 @@ import { login } from "./helpers";
 const SHELL_PAGES: Array<[string, string, string]> = [
   ["/app/templates", "Template Library", "Start from a proven layout"],
   ["/app/community", "Community", ""],
+  ["/app/notifications", "Notifications", ""],
   ["/app/leads", "Leads", ""],
   ["/app/bio", "Bio Pages", "Demo Page"],
   ["/app/booking", "Booking", ""],

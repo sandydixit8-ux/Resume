@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export function TopNav({ userName }: { userName: string }) {
   const router = useRouter();
@@ -18,6 +19,7 @@ export function TopNav({ userName }: { userName: string }) {
         Welcome back, <span className="font-semibold text-navy-900">{userName}</span>
       </div>
       <div className="flex items-center gap-3">
+        <NotificationBell />
         <button type="button" onClick={logout} className="btn-secondary !px-3 !py-1.5 text-xs">
           <LogOut className="h-3.5 w-3.5" /> Log out
         </button>
