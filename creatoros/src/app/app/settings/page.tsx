@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/get-session";
 import { row } from "@/lib/db/db";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { PrivacySection } from "@/components/settings/privacy-section";
+import { SupportForm } from "@/components/settings/support-form";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function SettingsPage() {
       </div>
       <ProfileForm initial={initial} hasProfile={!!p} />
       <PrivacySection />
+      <SupportForm />
     </div>
   );
 }
