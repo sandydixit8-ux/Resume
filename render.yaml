@@ -2,12 +2,13 @@ services:
   - type: web
     name: creatoros
     runtime: docker
-    plan: starter
+    plan: 1c-2g
+    region: oregon
     dockerContext: ./creatoros
     dockerfilePath: ./creatoros/Dockerfile
-    command: ./docker-entrypoint.sh
+    dockerCommand: ./docker-entrypoint.sh
     healthCheckPath: /api/health
-    autoDeploy: true
+    autoDeployTrigger: 'commit'
     envVars:
       - key: AUTH_SECRET
         sync: false
