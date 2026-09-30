@@ -12,6 +12,7 @@ const schema = z.object({
   email: z.string().email(),
   name: z.string().max(120).default(""),
   visitorId: z.string().default(""),
+  phone: z.string().max(20).optional().default(""),
 });
 
 /** Paid course checkout → provider session (enrollment happens on fulfillment). */
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       successUrl: `${SITE_URL}/api/store/checkout/success?order=${order.id}`,
       cancelUrl: `${SITE_URL}/u/${profile?.username ?? ""}`,
       customerEmail: parsed.data.email,
+      customerPhone: parsed.data.phone || undefined,
       metadata: { orderId: order.id, tenantId: course.tenant_id, courseId: course.id },
     });
     attachCheckoutSession(order.id, provider.name, session.sessionId);

@@ -132,6 +132,7 @@ function BuyProductCard(props: {
   const { product, accent, visitorId } = props;
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -144,7 +145,7 @@ function BuyProductCard(props: {
       const res = await fetch("/api/store/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: product.id, email: email.trim(), visitorId }),
+        body: JSON.stringify({ productId: product.id, email: email.trim(), phone: phone.trim(), visitorId }),
       });
       const j = await res.json();
       if (j.ok && j.data?.url) {
@@ -190,6 +191,14 @@ function BuyProductCard(props: {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@email.com"
+            className="w-full rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm text-navy-900 placeholder:text-navy-400 focus:border-brand-500 focus:outline-none"
+          />
+          <input
+            type="tel"
+            inputMode="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Phone number"
             className="w-full rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm text-navy-900 placeholder:text-navy-400 focus:border-brand-500 focus:outline-none"
           />
           {error ? <p className="text-xs text-red-600">{error}</p> : null}

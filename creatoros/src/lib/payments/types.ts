@@ -44,6 +44,8 @@ export interface PaymentProvider {
     successUrl: string;
     cancelUrl: string;
     customerEmail?: string;
+    /** Required by Cashfree for domestic rails; ignored by Stripe. */
+    customerPhone?: string;
     metadata: Record<string, string>;
   }): Promise<CheckoutSessionResult>;
   /** One-time checkout is not enough for plans — a recurring monthly session. */

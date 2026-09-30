@@ -98,6 +98,16 @@ function safeOrderId(raw: string): string {
   return cleaned.length >= 3 ? cleaned : `cf_${Date.now().toString(36)}`;
 }
 
+/** Cashfree expects a 10-digit Indian mobile for domestic rails. */
+function normalisePhone(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) return digits;
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
+  return undefined;
+}
+
 interface CreateOrderArgs {
   orderId: string;
   amountCents: number;
@@ -154,7 +164,7 @@ export const cashfreeProvider: PaymentProvider = {
     return { customerId: email.toLowerCase() };
   },
 
-  async createCheckoutSession({ lines, currency, successUrl, customerEmail, metadata }) {
+  async createCheckoutSession({ lines, currency, successUrl, customerEmail, customerPhone, metadata }) {
     const amountCents = lines.reduce((sum, l) => sum + l.amountCents * l.quantity, 0);
     const title = lines.map((l) => l.title).join(", ");
     return createOrder({
@@ -164,6 +174,7 @@ export const cashfreeProvider: PaymentProvider = {
       title,
       successUrl,
       customerEmail,
+      customerPhone: normalisePhone(customerPhone),
       metadata,
     });
   },

@@ -8,6 +8,7 @@ export function EnrollmentForm(props: { courseId: string; isPaid: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ enrollmentId?: string; url?: string; message?: string } | null>(null);
@@ -22,7 +23,7 @@ export function EnrollmentForm(props: { courseId: string; isPaid: boolean }) {
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name }),
+        body: JSON.stringify({ email, name, phone }),
       });
       const j = await res.json();
       if (j.ok && j.data) {
@@ -69,6 +70,16 @@ export function EnrollmentForm(props: { courseId: string; isPaid: boolean }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
+      {props.isPaid && (
+        <input
+          type="tel"
+          inputMode="tel"
+          className="input w-40 !py-2 text-sm"
+          placeholder="Phone"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+      )}
       {props.isPaid ? (
         <button type="submit" disabled={busy} className="btn-primary !py-2 text-sm">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buy now"}

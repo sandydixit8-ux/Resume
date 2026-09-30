@@ -15,6 +15,7 @@ const checkoutSchema = z.object({
   name: z.string().max(120).default(""),
   pageSlug: z.string().default(""),
   visitorId: z.string().default(""),
+  phone: z.string().max(20).optional().default(""),
 });
 
 export async function POST(req: NextRequest) {
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
       successUrl: `${SITE_URL}/api/store/checkout/success?order=${order.id}`,
       cancelUrl: `${SITE_URL}/u/${profile?.username ?? ""}`,
       customerEmail: email,
+      customerPhone: parsed.data.phone || undefined,
       metadata: { orderId: order.id, tenantId: product.tenant_id },
     });
     attachCheckoutSession(order.id, provider.name, session.sessionId);
