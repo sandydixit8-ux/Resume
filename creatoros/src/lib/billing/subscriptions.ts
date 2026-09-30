@@ -29,7 +29,19 @@ export function applySubscription(input: {
   customerId?: string | null;
   status: string;
   currentPeriodEnd?: string | null;
-}): SubscriptionRow {
+}): SubscriptionRow | null {
+  // A gateway can deliver events for tenants that were deleted while a mandate
+  // was still active. Returning null keeps the webhook a 200 so the provider
+  // stops retrying, instead of failing on the subscriptions foreign key.
+  if (!row("SELECT id FROM organizations WHERE id = ?", input.tenantId)) {
+    audit({
+      action: "billing.subscription_orphan",
+      resource: input.providerId || input.plan,
+      meta: { provider: input.provider, tenantId: input.tenantId, status: input.status },
+    });
+    return null;
+  }
+
   const existing = input.providerId
     ? row<SubscriptionRow>("SELECT * FROM subscriptions WHERE tenant_id = ? AND provider_id = ?", input.tenantId, input.providerId)
     : row<SubscriptionRow>("SELECT * FROM subscriptions WHERE tenant_id = ? AND plan = ? AND status != 'canceled'", input.tenantId, input.plan);
