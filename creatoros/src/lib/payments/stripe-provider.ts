@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import type { CheckoutSessionResult, PaymentProvider, PaymentStatus, ProviderWebhookEvent } from "./types";
+import type { CheckoutSessionResult, PaymentProvider, PaymentStatus, ProviderWebhookEvent, SubscriptionSessionResult } from "./types";
 
 let _stripe: Stripe | null = null;
 
@@ -43,7 +43,7 @@ export const stripeProvider: PaymentProvider = {
     return { sessionId: session.id, url: session.url };
   },
 
-  async createSubscriptionSession({ planName, amountCents, currency, successUrl, cancelUrl, customerEmail, metadata }): Promise<CheckoutSessionResult> {
+  async createSubscriptionSession({ planName, amountCents, currency, successUrl, cancelUrl, customerEmail, metadata }): Promise<SubscriptionSessionResult> {
     const stripe = client();
     if (!stripe) throw new Error("Stripe is not configured");
     const session = await stripe.checkout.sessions.create({
@@ -66,7 +66,7 @@ export const stripeProvider: PaymentProvider = {
       subscription_data: { metadata },
     });
     if (!session.url) throw new Error("Stripe did not return a checkout URL");
-    return { sessionId: session.id, url: session.url };
+    return { subscriptionId: session.id, sessionId: session.id, url: session.url };
   },
 
   async cancelSubscription(providerId: string): Promise<{ subscriptionId: string }> {

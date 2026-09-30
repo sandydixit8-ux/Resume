@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   const sessionId = str(event.data.id);
-  let result: FulfillResult | "subscription_applied" | "ignored" | "error" = "ignored";
+  let result: FulfillResult | "subscription_applied" | "tenant_not_found" | "ignored" | "error" = "ignored";
 
   try {
     switch (event.type) {
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
           const tenantId = str(metadata.tenantId);
           const plan = str(metadata.plan);
           if (tenantId && plan) {
-            applySubscription({
+            const applied = applySubscription({
               tenantId,
               plan,
               provider: provider.name,
@@ -64,8 +64,12 @@ export async function POST(req: NextRequest) {
               status: "active",
               currentPeriodEnd: str(event.data.currentPeriodEnd) || null,
             });
-            audit({ tenantId, action: "billing.webhook_subscription", resource: plan, meta: { event: event.id } });
-            result = "subscription_applied";
+            if (applied) {
+              audit({ tenantId, action: "billing.webhook_subscription", resource: plan, meta: { event: event.id } });
+              result = "subscription_applied";
+            } else {
+              result = "tenant_not_found";
+            }
           }
         } else if (sessionId) {
           result = fulfillOrderBySession(sessionId);
@@ -80,17 +84,16 @@ export async function POST(req: NextRequest) {
         if (tenantId) {
           const plan = str(metadata.plan) || "free";
           const status = str(sub.status);
-          const providerId = str(sub.id);
-          applySubscription({
+          const applied = applySubscription({
             tenantId,
             plan,
             provider: provider.name,
-            providerId,
+            providerId: str(sub.id),
             customerId: str(sub.customer),
             status: status || "active",
-            currentPeriodEnd: str(sub.current_period_end) || null,
+            currentPeriodEnd: str(sub.current_period_end) || str(sub.currentPeriodEnd) || null,
           });
-          result = "subscription_applied";
+          result = applied ? "subscription_applied" : "tenant_not_found";
         }
         break;
       }
@@ -99,7 +102,7 @@ export async function POST(req: NextRequest) {
         const metadata = (sub.metadata ?? {}) as Record<string, unknown>;
         const tenantId = str(metadata.tenantId);
         if (tenantId) {
-          applySubscription({
+          const applied = applySubscription({
             tenantId,
             plan: str(metadata.plan) || "free",
             provider: provider.name,
@@ -107,8 +110,10 @@ export async function POST(req: NextRequest) {
             customerId: str(sub.customer),
             status: "canceled",
           });
-          audit({ tenantId, action: "billing.webhook_subscription_deleted", resource: str(sub.id) });
-          result = "subscription_applied";
+          result = applied ? "subscription_applied" : "tenant_not_found";
+          if (applied) {
+            audit({ tenantId, action: "billing.webhook_subscription_deleted", resource: str(sub.id) });
+          }
         }
         break;
       }

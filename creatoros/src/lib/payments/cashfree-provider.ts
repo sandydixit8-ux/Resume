@@ -186,18 +186,21 @@ export const cashfreeProvider: PaymentProvider = {
     const tenantId = metadata.tenantId || "unknown";
     const subscriptionId = subscriptionIdFor(tenantId, planKey);
 
-    const { authLink } = await createSubscription({
+    // Cashfree returns no hosted URL for mandates: the browser completes
+    // authorisation via Cashfront's subscriptionsCheckout({ subsSessionId }).
+    const created = await createSubscription({
       subscriptionId,
       planId,
-      amountCents,
-      currency,
       customerEmail: customerEmail || "",
       customerPhone: normalisePhone(customerPhone),
       returnUrl: successUrl,
       tags: { tenantId, plan: planKey },
     });
 
-    return { sessionId: subscriptionId, url: authLink };
+    return {
+      subscriptionId: created.subscriptionId,
+      sessionId: created.sessionId,
+    };
   },
 
   async cancelSubscription(providerId) {

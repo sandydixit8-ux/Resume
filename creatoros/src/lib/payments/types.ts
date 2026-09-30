@@ -23,6 +23,22 @@ export interface CheckoutSessionResult {
   url: string;
 }
 
+/**
+ * Result of starting a recurring checkout.
+ *
+ * Stripe hands back a hosted URL to redirect to. Cashfree does not: the API
+ * only returns a `subscription_session_id`, and mandate authorisation is
+ * started in the browser with Cashfront's `subscriptionsCheckout()`. Callers
+ * must branch on `provider`, using `url` for Stripe and `sessionId` for
+ * Cashfree.
+ */
+export interface SubscriptionSessionResult {
+  subscriptionId: string;
+  sessionId: string;
+  /** Hosted checkout URL, for providers that return one. */
+  url?: string;
+}
+
 export interface ProviderWebhookEvent {
   id: string;
   type: string;
@@ -51,7 +67,7 @@ export interface PaymentProvider {
     metadata: Record<string, string>;
   }): Promise<CheckoutSessionResult>;
   /** One-time checkout is not enough for plans — a recurring monthly session. */
-  createSubscriptionSession(input: SubscriptionSessionInput): Promise<CheckoutSessionResult>;
+  createSubscriptionSession(input: SubscriptionSessionInput): Promise<SubscriptionSessionResult>;
   cancelSubscription(providerId: string): Promise<{ subscriptionId: string }>;
   /** Verify webhook signature and parse the event. Returns null when invalid. */
   verifyWebhook(rawBody: string, signature: string, timestamp?: string): Promise<ProviderWebhookEvent | null>;

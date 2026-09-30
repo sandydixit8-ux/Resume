@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { createHmac } from "node:crypto";
 import { mockProvider } from "./mock";
-import { getPaymentProvider } from "./index";
+import { getPaymentProvider, cashfreeSdkMode } from "./index";
 import { cashfreeProvider } from "./cashfree-provider";
-import { planIdFor, subscriptionIdFor, normalisePhone as cfPhone } from "./cashfree-subscriptions";
+import { planIdFor, subscriptionIdFor, createSubscription, normalisePhone as cfPhone } from "./cashfree-subscriptions";
 
 const CF_TEST_SECRET = "cf_secret_for_tests";
 const CF_TS = "1617695238078";
@@ -198,12 +198,116 @@ describe("cashfree subscription helpers", () => {
     expect(a.startsWith("sub_org1_pro_")).toBe(true);
   });
 
+  it("keeps long or unsafe tenant ids inside the documented 250 char limit", () => {
+    const id = subscriptionIdFor("org with spaces and a very long name ".repeat(5), "pro");
+    expect(id.length).toBeLessThanOrEqual(250);
+    expect(id.startsWith("sub_")).toBe(true);
+  });
+
   it("normalises Indian phone numbers and rejects unusable ones", () => {
     expect(cfPhone("9876543210")).toBe("9876543210");
     expect(cfPhone("+91 98765 43210")).toBe("9876543210");
     expect(cfPhone("09876543210")).toBe("9876543210");
     expect(cfPhone("12345")).toBeUndefined();
     expect(cfPhone(undefined)).toBeUndefined();
+  });
+});
+
+/**
+ * Cashfree returns no authorisation URL: mandate checkout is started in the
+ * browser with `subscriptionsCheckout({ subsSessionId })`, so the API layer
+ * must surface `subscription_session_id` and nothing else.
+ */
+describe("cashfree createSubscription", () => {
+  const baseArgs = {
+    subscriptionId: "sub_org1_creator_abc",
+    planId: "creatoros_creator",
+    customerEmail: "buyer@example.com",
+    returnUrl: "https://usecreatoros.co/app/billing?upgraded=creator",
+    tags: { tenantId: "org1", plan: "creator" },
+  };
+
+  async function withFetch<T>(
+    response: unknown,
+    fn: (call: { path: string; body: Record<string, unknown> }) => Promise<T>
+  ): Promise<{ call: { path: string; body: Record<string, unknown> }; result: T }> {
+    const calls: { path: string; body: Record<string, unknown> }[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({
+        path: String(input),
+        body: init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {},
+      });
+      return new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    try {
+      const result = await fn(calls[0]!);
+      return { call: calls[0]!, result };
+    } finally {
+      globalThis.fetch = original;
+    }
+  }
+
+  it("returns the subscription_session_id for client-side authorisation", async () => {
+    const { result } = await withFetch(
+      {
+        subscription_id: "sub_org1_creator_abc",
+        subscription_session_id: "sub_session_abc123payment",
+        subscription_status: "INITIALIZED",
+      },
+      () =>
+        createSubscription({
+          ...baseArgs,
+          customerPhone: "+91 98765 43210",
+        })
+    );
+
+    expect(result).toEqual({
+      subscriptionId: "sub_org1_creator_abc",
+      sessionId: "sub_session_abc123payment",
+      status: "INITIALIZED",
+    });
+  });
+
+  it("sends only the plan id and a normalised phone so the mandate matches the plan", async () => {
+    const { call } = await withFetch(
+      { subscription_id: "sub_org1_creator_abc", subscription_session_id: "sub_session_xpayment", subscription_status: "INITIALIZED" },
+      () => createSubscription({ ...baseArgs, customerPhone: "+91 98765 43210" })
+    );
+
+    expect(call.path).toContain("/subscriptions");
+    const details = call.body.customer_details as Record<string, unknown>;
+    expect(details.customer_phone).toBe("9876543210");
+    expect(call.body.plan_details).toEqual({ plan_id: "creatoros_creator", plan_type: "PERIODIC" });
+    // No invented redirect target: Cashfree has no hosted URL for mandates.
+    expect(call.body.auth_link).toBeUndefined();
+  });
+
+  it("fails loudly when Cashfree returns no session id", async () => {
+    await expect(
+      withFetch({ subscription_id: "sub_org1_creator_abc", subscription_status: "INITIALIZED" }, () =>
+        createSubscription(baseArgs)
+      )
+    ).rejects.toThrow(/subscription_session_id/);
+  });
+});
+
+describe("cashfree sdk mode", () => {
+  it("mirrors the server environment for the browser SDK", () => {
+    const prev = process.env.CASHFREE_ENV;
+    try {
+      process.env.CASHFREE_ENV = "live";
+      expect(cashfreeSdkMode()).toBe("production");
+      process.env.CASHFREE_ENV = "sandbox";
+      expect(cashfreeSdkMode()).toBe("sandbox");
+      delete process.env.CASHFREE_ENV;
+      expect(cashfreeSdkMode()).toBe("sandbox");
+    } finally {
+      restoreEnv("CASHFREE_ENV", prev);
+    }
   });
 });
 

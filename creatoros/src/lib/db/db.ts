@@ -53,6 +53,11 @@ const MIGRATIONS: Array<{ id: number; up: (db: DatabaseSync) => void }> = [
     id: 7,
     up: (db) => addColumn(db, "subscriptions", "customer_id", "TEXT"),
   },
+  {
+    // Lets admins do repeated partial refunds without over-refunding the order.
+    id: 8,
+    up: (db) => addColumn(db, "orders", "refunded_cents", "INTEGER NOT NULL DEFAULT 0"),
+  },
 ];
 
 function addColumn(db: DatabaseSync, table: string, column: string, ddl: string) {

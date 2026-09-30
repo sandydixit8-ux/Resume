@@ -1,4 +1,3 @@
-import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/get-session";
 import { ok, err } from "@/lib/http";
 import { isPlatformAdmin } from "@/lib/admin/access";

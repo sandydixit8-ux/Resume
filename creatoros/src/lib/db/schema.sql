@@ -384,6 +384,7 @@ CREATE TABLE IF NOT EXISTS orders (
   email       TEXT NOT NULL DEFAULT '',
   status      TEXT NOT NULL DEFAULT 'pending',  -- pending | paid | failed | refunded | canceled
   amount_cents INTEGER NOT NULL DEFAULT 0,
+  refunded_cents INTEGER NOT NULL DEFAULT 0,
   currency    TEXT NOT NULL DEFAULT 'usd',
   provider    TEXT NOT NULL DEFAULT 'mock',
   provider_session_id TEXT NOT NULL DEFAULT '',

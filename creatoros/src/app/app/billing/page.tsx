@@ -5,7 +5,8 @@ import { row } from "@/lib/db/db";
 import { getLimits, PLAN_PRICES } from "@/lib/plans";
 import { allUsage } from "@/lib/usage";
 import { activeSubscription } from "@/lib/billing/subscriptions";
-import { paymentConfigured } from "@/lib/payments";
+import { paymentConfigured, cashfreeSdkMode } from "@/lib/payments";
+import PlanUpgradeButton from "./upgrade-button";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,11 @@ export default async function BillingPage() {
   const limits = getLimits(currentPlan);
   const sub = activeSubscription(s.org.id);
   const paymentsWired = paymentConfigured();
-  const isMock = sub?.provider && sub.provider !== "stripe";
+  const isMock = sub?.provider === "mock";
+  // Cashfree mandates require an Indian phone, so ask for it at checkout.
+  const sdkMode = cashfreeSdkMode();
+  const needsPhone = process.env.PAYMENT_PROVIDER?.toLowerCase() === "cashfree" && Boolean(process.env.CASHFREE_CLIENT_ID);
+  const showPriceInr = needsPhone && PLAN_PRICES.starter.inr > 0;
 
   const contactCount = (row("SELECT COUNT(*) AS c FROM contacts WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
   const pageCount = (row("SELECT COUNT(*) AS c FROM bio_pages WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
@@ -55,8 +60,8 @@ export default async function BillingPage() {
               <div className="font-semibold capitalize text-navy-900">{sub.plan} plan · {sub.status}</div>
               <div className="text-xs text-navy-500">
                 via {sub.provider}
-                {sub.current_period_end && <> · renewed {sub.current_period_end.slice(0, 10)}</>}
-                {isMock && <> · simulated (no Stripe keys)</>}
+                {sub.current_period_end && <> · next charge {sub.current_period_end.slice(0, 10)}</>}
+                {isMock && <> · simulated (no payment provider keys)</>}
               </div>
             </div>
           </div>
@@ -107,7 +112,7 @@ export default async function BillingPage() {
                 {active && <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">Current</span>}
               </div>
               <div className="mt-2 text-xl font-bold text-navy-950">
-                ${price.usd}
+                {showPriceInr ? `₹${price.inr}` : `$${price.usd}`}
                 <span className="text-xs font-medium text-navy-400">/mo</span>
               </div>
               <ul className="mt-4 flex-1 space-y-2 text-sm text-navy-600">
@@ -119,9 +124,7 @@ export default async function BillingPage() {
                 {p.emailAutomation && <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" /> Email automation</li>}
               </ul>
               {!active && (
-                <a href={`/api/billing/checkout?plan=${key}`} className="btn-secondary mt-5 w-full">
-                  Upgrade
-                </a>
+                <PlanUpgradeButton plan={key} mode={sdkMode} needsPhone={needsPhone} />
               )}
             </div>
           );

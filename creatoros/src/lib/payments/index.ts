@@ -3,7 +3,14 @@ import { mockProvider } from "./mock";
 import { stripeProvider } from "./stripe-provider";
 import { cashfreeProvider } from "./cashfree-provider";
 
-export type { PaymentProvider, CheckoutLine, CheckoutSessionResult, ProviderWebhookEvent, PaymentStatus } from "./types";
+export type {
+  PaymentProvider,
+  CheckoutLine,
+  CheckoutSessionResult,
+  SubscriptionSessionResult,
+  ProviderWebhookEvent,
+  PaymentStatus,
+} from "./types";
 
 /**
  * Resolve the active payment provider.
@@ -26,6 +33,14 @@ export function getPaymentProvider(): PaymentProvider {
 
 export function paymentConfigured(): boolean {
   return getPaymentProvider().isConfigured();
+}
+
+/**
+ * Cashfront mode for the browser SDK. It must mirror the server-side
+ * environment or the hosted checkout will not resolve the session id.
+ */
+export function cashfreeSdkMode(): "sandbox" | "production" {
+  return (process.env.CASHFREE_ENV || "sandbox").toLowerCase() === "live" ? "production" : "sandbox";
 }
 
 const unconfiguredProvider: PaymentProvider = {

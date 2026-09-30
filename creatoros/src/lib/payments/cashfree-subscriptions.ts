@@ -4,12 +4,22 @@ import crypto from "node:crypto";
  * Cashfree Subscriptions (Recurring Billing) API layer.
  *
  * Docs verified 2026-09:
- *  POST   /plans                                  create a recurring plan
- *  POST   /subscriptions                          create mandate, returns auth link
- *  GET    /subscriptions/{id}                     fetch subscription
- *  POST   /subscriptions/{id}/manage              CANCEL | PAUSE | ACTIVATE | CHANGE_PLAN
- *  GET    /subscriptions/{id}/payments            all charges for a subscription
- *  GET    /subscriptions/{id}/fetch_payment_link   re-fetch the authorisation link
+ *  POST   /plans                    create a recurring plan
+ *  POST   /subscriptions            create mandate
+ *  GET    /subscriptions/{id}       fetch subscription
+ *  POST   /subscriptions/{id}/manage  cancel | reactivate
+ *  GET    /subscriptions/{id}/payments  all charges for a subscription
+ *
+ * IMPORTANT: the create response carries NO authorisation link. The
+ * `SubscriptionEntity` schema has no link field and there is no
+ * `fetch_payment_link` endpoint (verified: both return HTTP 404). Mandate
+ * authorisation is started client-side by the Cashfront JS SDK:
+ *
+ *   const cashfree = Cashfree({ mode: "sandbox" });
+ *   await cashfree.subscriptionsCheckout({ subsSessionId });
+ *
+ * where `subsSessionId` is `subscription_session_id` from the create response.
+ * See https://www.cashfree.com/docs/payments/subscription/hosted-checkout
  *
  * Lifecycle (docs): INITIALIZED -> BANK_APPROVAL_PENDING -> ACTIVE, with
  * ON_HOLD / PAUSED / CANCELLED / EXPIRED / COMPLETED as terminal or
@@ -71,9 +81,12 @@ export function planIdFor(planKey: string): string {
   return `creatoros_${cleaned || "plan"}`;
 }
 
+/** Cashfree allows 250 chars of [A-Za-z0-9_.- ] for subscription_id. */
 export function subscriptionIdFor(tenantId: string, planKey: string): string {
   const suffix = crypto.randomBytes(6).toString("hex");
-  return `sub_${tenantId}_${planKey}_${suffix}`.slice(0, 64);
+  const safeTenant = tenantId.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40);
+  const safePlan = planKey.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40);
+  return `sub_${safeTenant}_${safePlan}_${suffix}`.slice(0, 240);
 }
 
 /** Cashfree bills in major units (rupees); this app stores cents. */
@@ -148,8 +161,6 @@ export async function ensurePlan(args: EnsurePlanArgs): Promise<{ planId: string
 export interface CreateSubscriptionArgs {
   subscriptionId: string;
   planId: string;
-  amountCents: number;
-  currency: string;
   customerEmail: string;
   customerName?: string;
   customerPhone?: string;
@@ -159,16 +170,22 @@ export interface CreateSubscriptionArgs {
   paymentMethods?: string[];
 }
 
-/**
- * Create a mandate. The response carries the authorisation link the customer
- * must visit to activate the subscription.
- */
-export async function createSubscription(args: CreateSubscriptionArgs): Promise<{
+export interface CreatedSubscription {
   subscriptionId: string;
-  authLink: string;
-}> {
-  const amount = toMajorUnits(args.amountCents);
+  /** Fed to Cashfront's `subscriptionsCheckout({ subsSessionId })` in the browser. */
+  sessionId: string;
+  status: string;
+}
 
+/**
+ * Create a mandate. The customer must complete authorisation through the
+ * Cashfront hosted subscription checkout using the returned session id.
+ *
+ * Only `plan_id` is sent for the plan: the plan is created separately by
+ * `ensurePlan`, and re-sending amount/interval fields here risks the mandate
+ * disagreeing with the merchant-level plan object.
+ */
+export async function createSubscription(args: CreateSubscriptionArgs): Promise<CreatedSubscription> {
   const sub = await callOrThrow<CfSubscription>("/subscriptions", "POST", {
     subscription_id: args.subscriptionId,
     customer_details: {
@@ -178,102 +195,70 @@ export async function createSubscription(args: CreateSubscriptionArgs): Promise<
     },
     plan_details: {
       plan_id: args.planId,
-      plan_name: args.planId,
       plan_type: "PERIODIC",
-      plan_currency: args.currency.toUpperCase(),
-      plan_recurring_amount: amount,
-      plan_max_amount: amount,
-      plan_max_cycles: 0,
-      plan_intervals: 1,
-      plan_interval_type: "MONTH",
     },
     authorization_details: {
-      authorization_amount: amount,
-      authorization_amount_refund: true,
-      payment_methods: args.paymentMethods || ["upi", "card", "enach", "pnach"],
+      payment_methods: args.paymentMethods || ["upi", "card"],
     },
     subscription_meta: {
       return_url: args.returnUrl,
       notification_channel: ["EMAIL"],
     },
-    subscription_note: "CreatorOS plan subscription",
     subscription_tags: args.tags,
   });
 
   const subscriptionId = sub.subscription_id || args.subscriptionId;
+  const sessionId = sub.subscription_session_id || "";
 
-  let authLink = extractAuthLink(sub);
-  if (!authLink) authLink = await fetchAuthLink(subscriptionId);
-
-  if (!authLink) {
-    throw new Error("Cashfree did not return a subscription authorisation link");
+  if (!sessionId) {
+    throw new Error("Cashfree did not return a subscription_session_id");
   }
 
-  return { subscriptionId, authLink };
-}
-
-/**
- * Cashfree has returned the authorisation link under different keys across API
- * versions, so probe the known shapes before giving up.
- */
-function extractAuthLink(sub: CfSubscription): string {
-  const bag = sub as unknown as Record<string, unknown>;
-  const candidates = [
-    bag["auth_link"],
-    bag["authorization_link"],
-    bag["payment_link"],
-    bag["subscription_link"],
-    (bag["authorization_details"] as Record<string, unknown> | undefined)?.["auth_link"],
-  ];
-  for (const c of candidates) {
-    if (typeof c === "string" && c.startsWith("http")) return c;
-  }
-  return "";
-}
-
-async function fetchAuthLink(subscriptionId: string): Promise<string> {
-  const paths = [
-    `/subscriptions/${encodeURIComponent(subscriptionId)}/fetch_payment_link`,
-    `/subscriptions/${encodeURIComponent(subscriptionId)}/payment_link`,
-  ];
-  for (const path of paths) {
-    try {
-      const { status, data } = await call<Record<string, unknown>>(path, "GET");
-      if (status < 400) {
-        const link = extractAuthLink(data);
-        if (link) return link;
-      }
-    } catch {
-      // try the next documented shape
-    }
-  }
-  return "";
+  return {
+    subscriptionId,
+    sessionId,
+    status: String(sub.subscription_status || "INITIALIZED"),
+  };
 }
 
 export async function fetchSubscription(subscriptionId: string): Promise<CfSubscription> {
   return callOrThrow<CfSubscription>(`/subscriptions/${encodeURIComponent(subscriptionId)}`, "GET");
 }
 
+/**
+ * Docs: action is one of CANCEL | PAUSE | ACTIVATE | CHANGE_PLAN.
+ * `next_scheduled_time` is REQUIRED for ACTIVATE and only the date part counts.
+ */
 export async function cancelSubscriptionRemote(subscriptionId: string): Promise<CfSubscription> {
-  return callOrThrow<CfSubscription>(`/subscriptions/${encodeURIComponent(subscriptionId)}/manage`, "POST", {
-    subscription_id: subscriptionId,
-    action: "CANCEL",
-  });
+  return manageSubscription(subscriptionId, "CANCEL");
 }
 
-export async function pauseSubscriptionRemote(subscriptionId: string, nextScheduledTime?: string): Promise<CfSubscription> {
-  return callOrThrow<CfSubscription>(`/subscriptions/${encodeURIComponent(subscriptionId)}/manage`, "POST", {
-    subscription_id: subscriptionId,
-    action: "PAUSE",
-    action_details: nextScheduledTime ? { next_scheduled_time: nextScheduledTime } : {},
-  });
+export async function pauseSubscriptionRemote(subscriptionId: string): Promise<CfSubscription> {
+  return manageSubscription(subscriptionId, "PAUSE");
 }
 
-export async function activateSubscriptionRemote(subscriptionId: string, nextScheduledTime?: string): Promise<CfSubscription> {
+export async function activateSubscriptionRemote(
+  subscriptionId: string,
+  nextScheduledTime?: string
+): Promise<CfSubscription> {
+  // Date-only, and required by Cashfree for ACTIVATE.
+  const date = nextScheduledTime ? nextScheduledTime.slice(0, 10) : new Date().toISOString().slice(0, 10);
+  return manageSubscription(subscriptionId, "ACTIVATE", { next_scheduled_time: date });
+}
+
+export async function changePlanRemote(subscriptionId: string, planId: string): Promise<CfSubscription> {
+  return manageSubscription(subscriptionId, "CHANGE_PLAN", { plan_id: planId });
+}
+
+function manageSubscription(
+  subscriptionId: string,
+  action: "CANCEL" | "PAUSE" | "ACTIVATE" | "CHANGE_PLAN",
+  actionDetails?: Record<string, string>
+): Promise<CfSubscription> {
   return callOrThrow<CfSubscription>(`/subscriptions/${encodeURIComponent(subscriptionId)}/manage`, "POST", {
     subscription_id: subscriptionId,
-    action: "ACTIVATE",
-    action_details: nextScheduledTime ? { next_scheduled_time: nextScheduledTime } : {},
+    action,
+    ...(actionDetails ? { action_details: actionDetails } : {}),
   });
 }
 
