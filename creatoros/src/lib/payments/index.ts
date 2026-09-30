@@ -1,18 +1,24 @@
 import type { PaymentProvider } from "./types";
 import { mockProvider } from "./mock";
 import { stripeProvider } from "./stripe-provider";
+import { cashfreeProvider } from "./cashfree-provider";
 
 export type { PaymentProvider, CheckoutLine, CheckoutSessionResult, ProviderWebhookEvent, PaymentStatus } from "./types";
 
 /**
  * Resolve the active payment provider.
- * - STRIPE_SECRET_KEY set  → Stripe
- * - PAYMENT_PROVIDER=mock  → dev mock (explicit opt-in, allowed outside production)
- * - otherwise              → unconfigured stub (checkout returns 503 until keys exist)
+ * - PAYMENT_PROVIDER=cashfree + CASHFREE_* set  -> Cashfree
+ * - PAYMENT_PROVIDER=stripe   + STRIPE_SECRET_KEY set -> Stripe
+ * - PAYMENT_PROVIDER=mock                           -> dev mock
+ * - otherwise -> unconfigured stub (checkout returns 503 until keys exist)
  */
 export function getPaymentProvider(): PaymentProvider {
-  if (stripeProvider.isConfigured()) return stripeProvider;
-  const explicit = process.env.PAYMENT_PROVIDER === "mock";
+  const preferred = (process.env.PAYMENT_PROVIDER || "").toLowerCase();
+
+  if (preferred === "cashfree" && cashfreeProvider.isConfigured()) return cashfreeProvider;
+  if (preferred === "stripe" && stripeProvider.isConfigured()) return stripeProvider;
+
+  const explicit = preferred === "mock";
   const dev = process.env.NODE_ENV !== "production";
   if (explicit || dev) return mockProvider;
   return unconfiguredProvider;

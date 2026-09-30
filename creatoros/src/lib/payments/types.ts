@@ -50,7 +50,7 @@ export interface PaymentProvider {
   createSubscriptionSession(input: SubscriptionSessionInput): Promise<CheckoutSessionResult>;
   cancelSubscription(providerId: string): Promise<{ subscriptionId: string }>;
   /** Verify webhook signature and parse the event. Returns null when invalid. */
-  verifyWebhook(rawBody: string, signature: string): Promise<ProviderWebhookEvent | null>;
+  verifyWebhook(rawBody: string, signature: string, timestamp?: string): Promise<ProviderWebhookEvent | null>;
   getCheckoutPaymentStatus(sessionId: string): Promise<PaymentStatus>;
   refundPayment(input: { sessionId: string; amountCents?: number }): Promise<{ refundId: string }>;
 }

@@ -20,8 +20,10 @@ export async function POST(req: NextRequest) {
   if (provider.name === "unconfigured") return fail("Payments not configured", 503, "payments_not_configured");
 
   const raw = await req.text();
-  const signature = req.headers.get("stripe-signature") || "";
-  const event = await provider.verifyWebhook(raw, signature);
+  const cashfree = provider.name === "cashfree";
+  const signature = (cashfree ? req.headers.get("x-webhook-signature") : req.headers.get("stripe-signature")) || "";
+  const timestamp = (cashfree ? req.headers.get("x-webhook-timestamp") : "") || "";
+  const event = await provider.verifyWebhook(raw, signature, timestamp);
   if (!event) return fail("Invalid signature", 400, "invalid_signature");
 
   // Idempotency: a duplicate delivery must not process twice.

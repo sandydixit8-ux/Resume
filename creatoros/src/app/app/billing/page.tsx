@@ -130,8 +130,8 @@ export default async function BillingPage() {
 
       <p className="text-center text-xs text-navy-400">
         {paymentsWired
-          ? "Plan upgrades are billed through Stripe subscriptions and applied via webhook."
-          : "Stripe billing activates when STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET are set. Upgrades are simulated for development until then."}
+          ? "Plan upgrades are billed through the payment provider and applied via webhook."
+          : "Billing activates once payment provider keys are set. Upgrades are simulated for development until then."}
       </p>
     </div>
   );
