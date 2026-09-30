@@ -13,6 +13,8 @@ export interface SubscriptionSessionInput {
   successUrl: string;
   cancelUrl: string;
   customerEmail?: string;
+  /** Required by Cashfree for domestic mandates; ignored by Stripe. */
+  customerPhone?: string;
   metadata: Record<string, string>;
 }
 

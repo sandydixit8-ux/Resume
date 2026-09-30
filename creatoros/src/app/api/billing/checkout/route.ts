@@ -21,16 +21,21 @@ export async function GET(req: NextRequest) {
   if (!org) return err.notFound();
 
   const provider = getPaymentProvider();
+  const cashfreeReady = provider.name === "cashfree" && provider.isConfigured();
   const stripeReady = provider.name === "stripe" && provider.isConfigured();
-  if (stripeReady) {
+
+  if (stripeReady || cashfreeReady) {
     // Real recurring checkout — the webhook applies the plan on completion.
-    const price = PLAN_PRICES[plan];
+    // Cashfree bills domestically, so prefer the INR price when present.
+    const prices = PLAN_PRICES[plan];
+    const useInr = cashfreeReady && prices.inr > 0;
+    const amountCents = (useInr ? prices.inr : prices.usd) * 100;
     try {
       const session = await provider.createSubscriptionSession({
         planKey: plan,
         planName: plan.charAt(0).toUpperCase() + plan.slice(1),
-        amountCents: price.usd * 100,
-        currency: "usd",
+        amountCents,
+        currency: useInr ? "inr" : "usd",
         successUrl: `${SITE_URL}/app/billing?upgraded=${plan}`,
         cancelUrl: `${SITE_URL}/app/billing`,
         customerEmail: s.user.email,
@@ -43,7 +48,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // No Stripe keys: simulate in development, refuse in production.
+  // No provider keys: simulate in development, refuse in production.
   if (process.env.NODE_ENV === "production") {
     return fail("Billing is not configured. Contact support.", 503, "payments_not_configured");
   }

@@ -1,5 +1,13 @@
 import crypto from "node:crypto";
-import type { PaymentProvider, CheckoutSessionResult, PaymentStatus } from "./types";
+import type { PaymentProvider, CheckoutSessionResult, PaymentStatus, ProviderWebhookEvent } from "./types";
+import {
+  subscriptionsConfigured,
+  ensurePlan,
+  createSubscription,
+  cancelSubscriptionRemote,
+  subscriptionIdFor,
+  normalisePhone,
+} from "./cashfree-subscriptions";
 
 /**
  * Cashfree Payments (PG) provider.
@@ -98,16 +106,6 @@ function safeOrderId(raw: string): string {
   return cleaned.length >= 3 ? cleaned : `cf_${Date.now().toString(36)}`;
 }
 
-/** Cashfree expects a 10-digit Indian mobile for domestic rails. */
-function normalisePhone(raw?: string): string | undefined {
-  if (!raw) return undefined;
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length === 10) return digits;
-  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
-  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
-  return undefined;
-}
-
 interface CreateOrderArgs {
   orderId: string;
   amountCents: number;
@@ -179,14 +177,33 @@ export const cashfreeProvider: PaymentProvider = {
     });
   },
 
-  async createSubscriptionSession() {
-    // Cashfree Subscriptions uses a separate plans/subscribers/subscriptions API
-    // that needs sandbox verification before it is enabled here.
-    throw new Error("Recurring billing is not enabled for Cashfree yet");
+  async createSubscriptionSession({ planKey, planName, amountCents, currency, successUrl, customerEmail, customerPhone, metadata }) {
+    if (!subscriptionsConfigured()) throw new Error("Cashfree credentials are missing");
+
+    // Plans are merchant-level objects, so create-on-demand and reuse afterwards.
+    const { planId } = await ensurePlan({ planKey, planName, amountCents, currency });
+
+    const tenantId = metadata.tenantId || "unknown";
+    const subscriptionId = subscriptionIdFor(tenantId, planKey);
+
+    const { authLink } = await createSubscription({
+      subscriptionId,
+      planId,
+      amountCents,
+      currency,
+      customerEmail: customerEmail || "",
+      customerPhone: normalisePhone(customerPhone),
+      returnUrl: successUrl,
+      tags: { tenantId, plan: planKey },
+    });
+
+    return { sessionId: subscriptionId, url: authLink };
   },
 
-  async cancelSubscription() {
-    throw new Error("Recurring billing is not enabled for Cashfree yet");
+  async cancelSubscription(providerId) {
+    if (!subscriptionsConfigured()) throw new Error("Cashfree credentials are missing");
+    await cancelSubscriptionRemote(providerId);
+    return { subscriptionId: providerId };
   },
 
   async verifyWebhook(rawBody, signature, timestamp) {
@@ -213,8 +230,14 @@ export const cashfreeProvider: PaymentProvider = {
     const eventData = (parsed.event_data || {}) as Record<string, unknown>;
     const order = (eventData.order || {}) as Record<string, unknown>;
     const payment = (eventData.payment || {}) as Record<string, unknown>;
+    const subscription = (eventData.subscription || {}) as Record<string, unknown>;
     const cashfreeEvent = String(parsed.event || "");
     const eventId = String(parsed.event_id || `${cashfreeEvent}:${order.order_id ?? payment.payment_id ?? ""}`);
+
+    // Subscription webhooks arrive on the same endpoint; route them separately.
+    if (cashfreeEvent.startsWith("SUBSCRIPTION_")) {
+      return mapSubscriptionEvent(cashfreeEvent, eventId, subscription, eventData);
+    }
 
     // The webhook route fulfils orders by `event.data.id`, which must be the
     // order id (our provider_session_id). The event id is used for idempotency.
@@ -265,3 +288,63 @@ export const cashfreeProvider: PaymentProvider = {
     return { refundId: data.refund_id || `rf_${sessionId}` };
   },
 };
+
+/**
+ * Cashfree subscription lifecycle -> provider-neutral subscription events.
+ * Docs list these terminal states: CANCELLED, CUSTOMER_CANCELLED, EXPIRED,
+ * COMPLETED, CARD_EXPIRED. ON_HOLD / BANK_APPROVAL_PENDING mean the mandate
+ * exists but is not collecting, so the plan must not stay fully active.
+ */
+function mapSubscriptionEvent(
+  cashfreeEvent: string,
+  eventId: string,
+  subscription: Record<string, unknown>,
+  eventData: Record<string, unknown>
+): ProviderWebhookEvent {
+  const authDetails = (eventData.authorization_details || {}) as Record<string, unknown>;
+  const cfStatus = String(
+    subscription.subscription_status || authDetails.authorization_status || ""
+  ).toUpperCase();
+
+  const data: Record<string, unknown> = {
+    id: String(subscription.subscription_id || subscription.cf_subscription_id || eventId),
+    subscription: String(subscription.subscription_id || ""),
+    status: cfStatus || "unknown",
+    customer: String(
+      (subscription.customer_details as Record<string, unknown> | undefined)?.customer_email || ""
+    ),
+    currentPeriodEnd: subscription.next_schedule_date || null,
+    cf_status: cfStatus,
+    // Tags are how we map a Cashfree mandate back to a tenant + plan.
+    metadata: (subscription.subscription_tags as Record<string, unknown> | undefined) || {},
+  };
+
+  const deleted = ["CANCELLED", "CUSTOMER_CANCELLED", "EXPIRED", "COMPLETED", "CARD_EXPIRED"];
+  const active = ["ACTIVE", "INITIALIZED", "BANK_APPROVAL_PENDING", "PAUSED"];
+
+  if (cashfreeEvent === "SUBSCRIPTION_PAYMENT_FAILED") {
+    data.status = "past_due";
+    return { id: eventId, type: "customer.subscription.updated", data };
+  }
+  if (cashfreeEvent === "SUBSCRIPTION_REFUND_STATUS") {
+    return { id: eventId, type: `cashfree.${cashfreeEvent.toLowerCase()}`, data };
+  }
+  if (cfStatus && deleted.includes(cfStatus)) {
+    data.status = "canceled";
+    return { id: eventId, type: "customer.subscription.deleted", data };
+  }
+  if (cfStatus === "ON_HOLD") {
+    data.status = "past_due";
+    return { id: eventId, type: "customer.subscription.updated", data };
+  }
+  if (cfStatus === "LINK_EXPIRED") {
+    data.status = "canceled";
+    return { id: eventId, type: "customer.subscription.deleted", data };
+  }
+  if (active.includes(cfStatus)) {
+    data.status = cfStatus === "ACTIVE" ? "active" : cfStatus.toLowerCase();
+    return { id: eventId, type: "customer.subscription.updated", data };
+  }
+
+  return { id: eventId, type: `cashfree.${cashfreeEvent.toLowerCase()}`, data };
+}
