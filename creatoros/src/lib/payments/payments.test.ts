@@ -116,8 +116,57 @@ describe("cashfree webhook signature verification", () => {
   });
 });
 
+/**
+ * Cashfree has a second, unrelated product called Payment Forms. It posts
+ * `data.form` / `data.order` with no `event` and no `event_id` to the same
+ * dashboard. Those payloads used to collapse onto a degenerate idempotency
+ * key, so every later unidentifiable event looked like a duplicate and real
+ * payments could be dropped silently.
+ */
+describe("cashfree Payment Forms payloads", () => {
+  function post(raw: Record<string, unknown>) {
+    const body = JSON.stringify(raw);
+    const sig = createHmac("sha256", CF_TEST_SECRET).update(CF_TS + body).digest("base64");
+    return withSecret(() => cashfreeProvider.verifyWebhook(body, sig, CF_TS));
+  }
+
+  const formsPayload = {
+    data: {
+      form: { form_id: "my-form-1", cf_form_id: 2011640, form_currency: "INR" },
+      order: {
+        order_amount: 22,
+        order_id: "CFPay_U1mgll3c0e9g_ehdcjjbtckf",
+        order_status: "PAID",
+      },
+    },
+    event_time: "2021-04-16T14:10:36+05:30",
+    type: "PAYMENT_FORM_ORDER_WEBHOOK",
+  };
+
+  it("rejects a Payment Forms payload instead of inventing an event id", async () => {
+    expect(await post(formsPayload)).toBeNull();
+  });
+
+  it("rejects any payload that is not a Payment Gateway event", async () => {
+    expect(await post({ type: "SOMETHING_ELSE", data: {} })).toBeNull();
+    expect(await post({ event: "" })).toBeNull();
+  });
+
+  it("still accepts real Payment Gateway events", async () => {
+    const event = await post({
+      event: "PAYMENT_SUCCESS",
+      event_id: "pg_ok_1",
+      event_data: { order: { order_id: "ord_1", order_status: "PAID" } },
+    });
+    expect(event?.id).toBe("pg_ok_1");
+    expect(event?.type).toBe("checkout.session.completed");
+    expect(event?.data.id).toBe("ord_1");
+  });
+});
+
 describe("cashfree subscription webhooks", () => {
   function subEvent(subscription: Record<string, unknown>, eventId: string, event = "SUBSCRIPTION_STATUS_CHANGED") {
+
     const body = JSON.stringify({ event, event_id: eventId, event_data: { subscription } });
     const sig = createHmac("sha256", CF_TEST_SECRET).update(CF_TS + body).digest("base64");
     return { body, sig, ts: CF_TS };

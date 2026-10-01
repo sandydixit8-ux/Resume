@@ -249,7 +249,21 @@ export const cashfreeProvider: PaymentProvider = {
     const payment = (eventData.payment || {}) as Record<string, unknown>;
     const subscription = (eventData.subscription || {}) as Record<string, unknown>;
     const cashfreeEvent = String(parsed.event || "");
-    const eventId = String(parsed.event_id || `${cashfreeEvent}:${order.order_id ?? payment.payment_id ?? ""}`);
+
+    // Only Payment Gateway webhooks carry `event`; Payment Forms posts a
+    // different envelope (data.form / data.order, no event id) to the same
+    // dashboard. Those cannot be mapped onto an order or subscription, so
+    // reject them instead of guessing an id.
+    if (!cashfreeEvent) return null;
+
+    // Cashfree always sends event_id. If it is somehow absent, derive a stable
+    // id from the payload hash rather than building a degenerate key that would
+    // collide with other unidentifiable events and cause a real payment to be
+    // silently dropped as a duplicate.
+    const eventId = String(
+      parsed.event_id ||
+        `cf_derived_${crypto.createHash("sha256").update(rawBody).digest("hex").slice(0, 32)}`
+    );
 
     // Subscription webhooks arrive on the same endpoint; route them separately.
     if (cashfreeEvent.startsWith("SUBSCRIPTION_")) {
