@@ -38,6 +38,7 @@ export function emailConfigured(): boolean {
   const provider = (process.env.EMAIL_PROVIDER || "log").toLowerCase();
   if (provider === "resend") return Boolean(process.env.RESEND_API_KEY);
   if (provider === "mailgun") return Boolean(process.env.MAILGUN_API_KEY && process.env.MAILGUN_DOMAIN);
+  if (provider === "brevo") return Boolean(process.env.BREVO_API_KEY);
   return true; // log provider always available
 }
 
@@ -50,6 +51,7 @@ export function defaultFromEmail(): string {
  *   - "log"    (default) writes rendered HTML to data/emails/ — dev preview, zero config
  *   - "resend" uses the Resend HTTP API (RESEND_API_KEY)
  *   - "mailgun" uses the Mailgun HTTP API (MAILGUN_API_KEY + MAILGUN_DOMAIN)
+ *   - "brevo"  uses the Brevo (ex-Sendinblue) HTTP API (BREVO_API_KEY)
  * Unsupported/unauthorized backends fall back to log mode so sends never hard-fail in dev.
  */
 export async function sendEmail(msg: EmailMessage): Promise<EmailResult> {
@@ -89,6 +91,27 @@ export async function sendEmail(msg: EmailMessage): Promise<EmailResult> {
     if (res.ok) {
       const data = (await res.json()) as { id: string };
       return { provider: "mailgun", providerId: data.id };
+    }
+  }
+
+  if (provider === "brevo" && process.env.BREVO_API_KEY) {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": process.env.BREVO_API_KEY, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        sender: {
+          name: msg.fromName || process.env.EMAIL_FROM_NAME || "CreatorOS",
+          email: msg.fromEmail || defaultFromEmail(),
+        },
+        to: [{ email: msg.to, ...(msg.toName ? { name: msg.toName } : {}) }],
+        subject: msg.subject,
+        htmlContent: msg.html,
+        ...(msg.replyTo ? { replyTo: { email: msg.replyTo } } : {}),
+      }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { messageId: string };
+      return { provider: "brevo", providerId: data.messageId };
     }
   }
 
