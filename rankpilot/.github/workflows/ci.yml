@@ -1,0 +1,79 @@
+name: CI
+
+# A pull request is not green unless every gate below passes. The build runs
+# after typecheck because `tsc --noEmit` uses an incremental cache that has
+# missed real type errors in this project before; `next build` is authoritative.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and security tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          AUTH_SECRET: ci-secret-not-used-for-real-traffic-0123456789
+
+      - name: Migration test
+        run: npm run db:migration-test
+
+      - name: Backup and restore verification
+        run: |
+          npm run db:init
+          npm run db:restore-test
+
+      - name: Backup encryption verification
+        # Proves the encrypted path end to end in CI, including that a wrong
+        # passphrase is rejected. Without this, encryption could silently rot.
+        env:
+          BACKUP_PASSPHRASE: ci-only-backup-passphrase
+          BACKUP_RETENTION_DAYS: "30"
+        run: npm run db:restore-test
+
+      - name: Smoke test
+        # Includes the external health monitor, run against this same server.
+        run: node scripts/smoke.mjs
+
+  # The seven previously-fixed bugs plus the security-critical invariants are
+  # already covered by the suite above. This job runs the same suite and fails
+  # loudly if a regression guard has been deleted rather than fixed, which is
+  # the realistic way one of these protections quietly disappears.
+  regression-guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Assert the regression guards still exist
+        run: node scripts/check-regression-guards.mjs
+      - name: Run them
+        run: npm test

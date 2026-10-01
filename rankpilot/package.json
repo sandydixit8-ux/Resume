@@ -1,0 +1,52 @@
+{
+  "name": "rankpilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RankPilot AI - AI-Powered SEO, GEO, AEO & Social Growth Engine",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:init": "tsx scripts/init-db.ts",
+    "db:backup": "tsx scripts/backup.ts",
+    "db:restore-test": "tsx scripts/backup.ts --verify",
+    "db:restore-test:retained": "tsx scripts/backup.ts --verify-retained",
+    "db:migration-test": "tsx scripts/migration-test.ts",
+    "bench:sqlite": "tsx scripts/sqlite-concurrency.ts",
+    "bench:http": "tsx scripts/http-load.ts",
+    "smoke": "node scripts/smoke.mjs",
+    "monitor:health": "tsx scripts/monitor-health.ts",
+    "preflight:deploy": "tsx scripts/deploy-preflight.ts",
+    "post-deploy:check": "tsx scripts/post-deploy-check.ts",
+    "guards:regression": "node scripts/check-regression-guards.mjs"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.469.0",
+    "next": "^16.3.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^16.3.4",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+  --color-ink-950: #020617;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-soft: 0 1px 2px 0 rgb(0 0 0 / 0.05), 0 6px 24px -8px rgb(0 0 0 / 0.08);
+  --radius-lg: 0.7rem;
+  --radius-xl: 0.9rem;
+  --radius-2xl: 1.1rem;
+}
+
+body {
+  @apply bg-ink-50 text-ink-900 antialiased;
+}
+
+.card {
+  @apply rounded-2xl border border-ink-200 bg-white shadow-soft;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-50;
+}
+
+.btn-primary {
+  @apply btn bg-brand-600 text-white hover:bg-brand-700;
+}
+
+.btn-secondary {
+  @apply btn border border-ink-200 bg-white text-ink-800 hover:bg-ink-50;
+}
+
+.btn-ghost {
+  @apply btn text-ink-600 hover:bg-ink-100;
+}
+
+.input {
+  @apply w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100;
+}
+
+.label {
+  @apply mb-1 block text-sm font-medium text-ink-700;
+}
+
+.th {
+  @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ink-500;
+}
+
+.td {
+  @apply px-3 py-2 text-sm text-ink-700;
+}
+
+.prose-rankpilot h2 {
+  @apply mb-1.5;
+}
+
+.prose-rankpilot code {
+  @apply rounded bg-ink-100 px-1 py-0.5 text-[0.8em] text-ink-800;
+}

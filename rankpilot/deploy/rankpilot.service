@@ -1,0 +1,81 @@
+# RankPilot — production service.
+#
+# Deliberately a single unit with a fixed Restart policy and no horizontal
+# scaling. SQLite is a single-writer store: two instances on one volume will
+# lock or corrupt the database, and two on separate volumes will silently
+# diverge. Scale vertically, not horizontally.
+#
+# Data lives outside the release directory, on a persistent volume. The unit
+# refuses to start if that is not true -- see ExecStartPre below.
+
+[Unit]
+Description=RankPilot
+Documentation=file:/srv/rankpilot/DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rankpilot
+Group=rankpilot
+WorkingDirectory=/srv/rankpilot/app
+
+# Secrets live in this file, mode 0600, owned by root:
+#   /etc/rankpilot/rankpilot.env
+EnvironmentFile=/etc/rankpilot/rankpilot.env
+
+# Fail closed before the app ever starts. If the database is on a volatile
+# filesystem, or a secret is missing, the deploy stops here instead of serving
+# traffic that will lose data on the next restart.
+#
+# --init-dirs comes FIRST, deliberately. On a first deploy the data directory
+# does not exist yet, and a missing directory is itself a blocker, so a plain
+# preflight here would exit 1 and systemd would never reach the line below --
+# the unit could not bootstrap a fresh host at all. With --init-dirs, directories
+# are created only when a missing directory is the sole blocker, and any real
+# configuration problem still stops the start.
+ExecStartPre=/usr/bin/npm run preflight:deploy -- --init-dirs
+
+# Migrations are applied here, not by hand. db:init runs the same resolver as the
+# app and prints the absolute path it opened, so a mismatch between the release
+# directory and the service's environment is visible in the journal rather than
+# discovered when a user finds their data missing.
+ExecStartPre=/usr/bin/npm run db:init
+ExecStart=/usr/bin/npm run start
+
+Restart=always
+RestartSec=5
+# Give up if it crash-loops, so a broken deploy is visible rather than silent.
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# --- Hardening ---------------------------------------------------------------
+# The process needs to read its own code and write one data directory. Nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+# WorkingDirectory is /srv/rankpilot/app, which ProtectSystem=strict mounts
+# read-only, so the release directory must be listed as writable or the build's
+# own cache writes fail. Kept explicit and narrow: only the app tree, never the
+# whole of /srv.
+ReadWritePaths=/srv/rankpilot/app/.next
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadWritePaths=/var/lib/rankpilot
+# The database is a file, so allow it even under a read-only rest of the system.
+StateDirectory=rankpilot
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rankpilot
+
+[Install]
+WantedBy=multi-user.target
