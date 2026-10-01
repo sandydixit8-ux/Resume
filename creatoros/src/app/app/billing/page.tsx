@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
-import { Check, CreditCard, XCircle } from "lucide-react";
+import { CreditCard, XCircle } from "lucide-react";
 import { getSession } from "@/lib/auth/get-session";
 import { row } from "@/lib/db/db";
 import { getLimits, PLAN_PRICES } from "@/lib/plans";
 import { allUsage } from "@/lib/usage";
 import { activeSubscription } from "@/lib/billing/subscriptions";
 import { paymentConfigured, cashfreeSdkMode } from "@/lib/payments";
-import PlanUpgradeButton from "./upgrade-button";
+import PlanCards, { type PlanCardData } from "./plan-cards";
 
 export const dynamic = "force-dynamic";
 
@@ -100,36 +100,28 @@ export default async function BillingPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {PLAN_ORDER.map((key) => {
-          const p = getLimits(key);
-          const active = key === currentPlan;
-          const price = PLAN_PRICES[key];
-          return (
-            <div key={key} className={`card flex flex-col p-5 ${active ? "border-brand-400 ring-1 ring-brand-300" : ""}`}>
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold capitalize text-navy-900">{key}</h3>
-                {active && <span className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">Current</span>}
-              </div>
-              <div className="mt-2 text-xl font-bold text-navy-950">
-                {showPriceInr ? `₹${price.inr}` : `$${price.usd}`}
-                <span className="text-xs font-medium text-navy-400">/mo</span>
-              </div>
-              <ul className="mt-4 flex-1 space-y-2 text-sm text-navy-600">
-                <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" /> {f(p.bioPages)} bio pages</li>
-                <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" /> {f(p.links)} links</li>
-                <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" /> {f(p.contacts)} contacts</li>
-                <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" /> {f(p.services)} booking services</li>
-                {p.customDomain && <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" /> Custom domain</li>}
-                {p.emailAutomation && <li className="flex items-start gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" /> Email automation</li>}
-              </ul>
-              {!active && (
-                <PlanUpgradeButton plan={key} mode={sdkMode} needsPhone={needsPhone} />
-              )}
-            </div>
-          );
+      <PlanCards
+        plans={PLAN_ORDER.map((key) => {
+          const l = getLimits(key);
+          return {
+            key,
+            active: key === currentPlan,
+            priceInr: PLAN_PRICES[key].inr,
+            priceUsd: PLAN_PRICES[key].usd,
+            limits: {
+              bioPages: l.bioPages,
+              links: l.links,
+              contacts: l.contacts,
+              services: l.services,
+              customDomain: l.customDomain,
+              emailAutomation: l.emailAutomation,
+            },
+          } satisfies PlanCardData;
         })}
-      </div>
+        mode={sdkMode}
+        needsPhone={needsPhone}
+        showPriceInr={showPriceInr}
+      />
 
       <p className="text-center text-xs text-navy-400">
         {paymentsWired
@@ -138,8 +130,4 @@ export default async function BillingPage() {
       </p>
     </div>
   );
-}
-
-function f(n: number): string {
-  return n === -1 ? "Unlimited" : String(n);
 }
