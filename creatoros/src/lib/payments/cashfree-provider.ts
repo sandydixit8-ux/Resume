@@ -96,6 +96,18 @@ function toMajorUnits(amountCents: number): number {
   return Math.round((amountCents / 100) * 100) / 100;
 }
 
+/**
+ * Cashfree requires `customer_name` to be a person name and answers HTTP 400
+ * with "should be a person name" when given an email address. So drop anything
+ * that is not name-like instead of sending a value that will be rejected.
+ */
+function cashfreePersonName(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const name = raw.trim().slice(0, 100);
+  if (!name || name.includes("@")) return undefined;
+  return name;
+}
+
 function toIso(currency: string): string {
   return currency.toLowerCase() === "inr" ? "INR" : currency.toUpperCase();
 }
@@ -177,7 +189,7 @@ export const cashfreeProvider: PaymentProvider = {
     });
   },
 
-  async createSubscriptionSession({ planKey, planName, amountCents, currency, successUrl, customerEmail, customerPhone, metadata }) {
+  async createSubscriptionSession({ planKey, planName, amountCents, currency, successUrl, customerEmail, customerName, customerPhone, metadata }) {
     if (!subscriptionsConfigured()) throw new Error("Cashfree credentials are missing");
 
     // Plans are merchant-level objects, so create-on-demand and reuse afterwards.
@@ -186,12 +198,14 @@ export const cashfreeProvider: PaymentProvider = {
     const tenantId = metadata.tenantId || "unknown";
     const subscriptionId = subscriptionIdFor(tenantId, planKey);
 
-    // Cashfree returns no hosted URL for mandates: the browser completes
-    // authorisation via Cashfront's subscriptionsCheckout({ subsSessionId }).
+    // Cashfree rejects an email in `customer_name` (400 "should be a person
+    // name"), so a missing name is passed through as undefined rather than
+    // being backfilled with the email address.
     const created = await createSubscription({
       subscriptionId,
       planId,
       customerEmail: customerEmail || "",
+      customerName: cashfreePersonName(customerName),
       customerPhone: normalisePhone(customerPhone),
       returnUrl: successUrl,
       tags: { tenantId, plan: planKey },

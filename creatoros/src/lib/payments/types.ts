@@ -13,6 +13,8 @@ export interface SubscriptionSessionInput {
   successUrl: string;
   cancelUrl: string;
   customerEmail?: string;
+  /** Cashfree rejects an email in `customer_name`; it requires a person name. */
+  customerName?: string;
   /** Required by Cashfree for domestic mandates; ignored by Stripe. */
   customerPhone?: string;
   metadata: Record<string, string>;

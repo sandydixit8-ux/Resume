@@ -70,6 +70,8 @@ export async function POST(req: NextRequest) {
         successUrl: `${SITE_URL}/app/billing?upgraded=${plan}`,
         cancelUrl: `${SITE_URL}/app/billing`,
         customerEmail: s.user.email,
+        // Cashfree rejects an email here: it requires a person name.
+        customerName: s.user.name,
         customerPhone: phone,
         metadata: { tenantId: s.org.id, plan },
       });

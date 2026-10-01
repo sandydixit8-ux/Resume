@@ -286,12 +286,35 @@ describe("cashfree createSubscription", () => {
     expect(call.body.auth_link).toBeUndefined();
   });
 
+  /**
+   * Cashfree answers HTTP 400 "customer_details.customer_name : should be a
+   * person name" when the name is an email, which broke every checkout whose
+   * account had no display name.
+   */
+  it("never sends an email address as the customer name", async () => {
+    const withName = await withFetch(
+      { subscription_id: "sub_org1_creator_abc", subscription_session_id: "sub_session_xpayment", subscription_status: "INITIALIZED" },
+      () => createSubscription({ ...baseArgs, customerName: "Asha Rao" })
+    );
+    expect((withName.call.body.customer_details as Record<string, unknown>).customer_name).toBe("Asha Rao");
+
+    // No name supplied: the email must not be backfilled into customer_name.
+    const noName = await withFetch(
+      { subscription_id: "sub_org1_creator_abc", subscription_session_id: "sub_session_xpayment", subscription_status: "INITIALIZED" },
+      () => createSubscription(baseArgs)
+    );
+    const details = noName.call.body.customer_details as Record<string, unknown>;
+    expect(details.customer_name).toBeUndefined();
+    expect(details.customer_email).toBe("buyer@example.com");
+  });
+
   it("fails loudly when Cashfree returns no session id", async () => {
     await expect(
       withFetch({ subscription_id: "sub_org1_creator_abc", subscription_status: "INITIALIZED" }, () =>
         createSubscription(baseArgs)
       )
     ).rejects.toThrow(/subscription_session_id/);
+
   });
 });
 

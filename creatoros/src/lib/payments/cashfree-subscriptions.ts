@@ -189,7 +189,9 @@ export async function createSubscription(args: CreateSubscriptionArgs): Promise<
   const sub = await callOrThrow<CfSubscription>("/subscriptions", "POST", {
     subscription_id: args.subscriptionId,
     customer_details: {
-      customer_name: args.customerName || args.customerEmail,
+      // Cashfree rejects an email here with 400 "should be a person name",
+      // so this must stay undefined rather than falling back to the email.
+      customer_name: args.customerName,
       customer_email: args.customerEmail,
       customer_phone: normalisePhone(args.customerPhone),
     },
