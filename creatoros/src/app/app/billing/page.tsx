@@ -5,7 +5,7 @@ import { row } from "@/lib/db/db";
 import { getLimits, PLAN_PRICES } from "@/lib/plans";
 import { allUsage } from "@/lib/usage";
 import { activeSubscription } from "@/lib/billing/subscriptions";
-import { paymentConfigured, cashfreeSdkMode } from "@/lib/payments";
+import { paymentConfigured, cashfreeSdkMode, billingCurrency } from "@/lib/payments";
 import PlanCards, { type PlanCardData } from "./plan-cards";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,8 @@ export default async function BillingPage() {
   // Cashfree mandates require an Indian phone, so ask for it at checkout.
   const sdkMode = cashfreeSdkMode();
   const needsPhone = process.env.PAYMENT_PROVIDER?.toLowerCase() === "cashfree" && Boolean(process.env.CASHFREE_CLIENT_ID);
-  const showPriceInr = needsPhone && PLAN_PRICES.starter.inr > 0;
+  const currency = billingCurrency();
+  const showPriceInr = currency === "inr" && PLAN_PRICES.starter.inr > 0;
 
   const contactCount = (row("SELECT COUNT(*) AS c FROM contacts WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
   const pageCount = (row("SELECT COUNT(*) AS c FROM bio_pages WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
@@ -125,7 +126,7 @@ export default async function BillingPage() {
 
       <p className="text-center text-xs text-navy-400">
         {paymentsWired
-          ? "Plan upgrades are billed through the payment provider and applied via webhook."
+          ? `Plan upgrades are billed in ${showPriceInr ? "INR" : "USD"} through the payment provider and applied via webhook.`
           : "Billing activates once payment provider keys are set. Upgrades are simulated for development until then."}
       </p>
     </div>

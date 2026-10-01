@@ -43,6 +43,15 @@ export function cashfreeSdkMode(): "sandbox" | "production" {
   return (process.env.CASHFREE_ENV || "sandbox").toLowerCase() === "live" ? "production" : "sandbox";
 }
 
+/**
+ * Currency for plan upgrades. Cashfree supports both USD and INR mandates, so
+ * this is a merchant choice rather than a provider limitation: set
+ * BILLING_CURRENCY=inr to bill in rupees, anything else (default) bills in USD.
+ */
+export function billingCurrency(): "usd" | "inr" {
+  return (process.env.BILLING_CURRENCY || "usd").toLowerCase() === "inr" ? "inr" : "usd";
+}
+
 const unconfiguredProvider: PaymentProvider = {
   name: "unconfigured",
   isConfigured: () => false,

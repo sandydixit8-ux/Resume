@@ -5,7 +5,7 @@ import { run, row, nowIso } from "@/lib/db/db";
 import { getSession } from "@/lib/auth/get-session";
 import { can } from "@/lib/auth/rbac";
 import { PLANS, PLAN_PRICES } from "@/lib/plans";
-import { getPaymentProvider } from "@/lib/payments";
+import { getPaymentProvider, billingCurrency } from "@/lib/payments";
 import { normalisePhone } from "@/lib/payments/cashfree-subscriptions";
 import { applySubscription } from "@/lib/billing/subscriptions";
 import { SITE_URL } from "@/lib/constants";
@@ -52,10 +52,11 @@ export async function POST(req: NextRequest) {
   const stripeReady = provider.name === "stripe" && provider.isConfigured();
 
   if (stripeReady || cashfreeReady) {
-    // Cashfree bills domestically, so prefer the INR price when present.
+    // Price the plan in the configured billing currency. Cashfree supports
+    // both USD and INR mandates, so this is a merchant choice.
     const prices = PLAN_PRICES[plan];
-    const useInr = cashfreeReady && prices.inr > 0;
-    const amountCents = (useInr ? prices.inr : prices.usd) * 100;
+    const currency = billingCurrency();
+    const amountCents = (currency === "inr" ? prices.inr : prices.usd) * 100;
 
     if (cashfreeReady && !phone) {
       return err.validation({ phone: "A 10-digit phone number is required for Indian mandates" });
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
         planKey: plan,
         planName: plan.charAt(0).toUpperCase() + plan.slice(1),
         amountCents,
-        currency: useInr ? "inr" : "usd",
+        currency,
         successUrl: `${SITE_URL}/app/billing?upgraded=${plan}`,
         cancelUrl: `${SITE_URL}/app/billing`,
         customerEmail: s.user.email,

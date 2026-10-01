@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createHmac } from "node:crypto";
 import { mockProvider } from "./mock";
-import { getPaymentProvider, cashfreeSdkMode } from "./index";
+import { getPaymentProvider, cashfreeSdkMode, billingCurrency } from "./index";
 import { cashfreeProvider } from "./cashfree-provider";
 import { planIdFor, subscriptionIdFor, createSubscription, normalisePhone as cfPhone } from "./cashfree-subscriptions";
 
@@ -186,9 +186,20 @@ describe("cashfree subscription webhooks", () => {
 
 describe("cashfree subscription helpers", () => {
   it("builds plan ids that satisfy the Cashfree charset and length limit", () => {
-    expect(planIdFor("creator")).toBe("creatoros_creator");
-    expect(planIdFor("Weird Plan!!")).toBe("creatoros_weirdplan");
+    expect(planIdFor("creator")).toBe("creatoros_creator_inr");
+    expect(planIdFor("Weird Plan!!")).toBe("creatoros_weirdplan_inr");
     expect(planIdFor("x".repeat(80)).length).toBeLessThanOrEqual(40);
+  });
+
+  /**
+   * Cashfree plans are permanently priced in the currency they were created
+   * with, so the id has to encode the currency. Otherwise a USD checkout
+   * silently reuses the existing INR plan and charges the wrong amount.
+   */
+  it("encodes the currency in the plan id", () => {
+    expect(planIdFor("creator", "USD")).toBe("creatoros_creator_usd");
+    expect(planIdFor("creator", "inr")).toBe("creatoros_creator_inr");
+    expect(planIdFor("creator", "USD")).not.toBe(planIdFor("creator", "INR"));
   });
 
   it("builds unique subscription ids that carry tenant and plan", () => {
@@ -334,7 +345,29 @@ describe("cashfree sdk mode", () => {
   });
 });
 
+describe("billing currency", () => {
+  it("defaults to USD and honours BILLING_CURRENCY", () => {
+    const prev = process.env.BILLING_CURRENCY;
+    try {
+      delete process.env.BILLING_CURRENCY;
+      expect(billingCurrency()).toBe("usd");
+      process.env.BILLING_CURRENCY = "inr";
+      expect(billingCurrency()).toBe("inr");
+      process.env.BILLING_CURRENCY = "INR";
+      expect(billingCurrency()).toBe("inr");
+      process.env.BILLING_CURRENCY = "usd";
+      expect(billingCurrency()).toBe("usd");
+      // Unknown values must not silently become rupees.
+      process.env.BILLING_CURRENCY = "eur";
+      expect(billingCurrency()).toBe("usd");
+    } finally {
+      restoreEnv("BILLING_CURRENCY", prev);
+    }
+  });
+});
+
 function restoreEnv(key: string, value: string | undefined) {
+
   if (value === undefined) delete process.env[key];
   else process.env[key] = value;
 }

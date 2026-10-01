@@ -75,10 +75,18 @@ async function callOrThrow<T>(path: string, method: "GET" | "POST", body?: unkno
   return data;
 }
 
-/** plan_id allows only alphanumerics, dot, hyphen, underscore; max 40 chars. */
-export function planIdFor(planKey: string): string {
-  const cleaned = planKey.toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 30);
-  return `creatoros_${cleaned || "plan"}`;
+/**
+ * Cashfree plans are merchant-level and permanently priced in the currency
+ * they were created with, so the plan id must include the currency. Without
+ * this, an existing INR plan would be reused for a USD checkout and the
+ * customer would be charged the wrong amount.
+ *
+ * plan_id allows only alphanumerics, dot, hyphen, underscore; max 40 chars.
+ */
+export function planIdFor(planKey: string, currency = "INR"): string {
+  const cleaned = planKey.toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 24);
+  const suffix = currency.toLowerCase() === "usd" ? "usd" : "inr";
+  return `creatoros_${cleaned || "plan"}_${suffix}`;
 }
 
 /** Cashfree allows 250 chars of [A-Za-z0-9_.- ] for subscription_id. */
@@ -126,7 +134,7 @@ export interface EnsurePlanArgs {
  * treat as success rather than failing checkout.
  */
 export async function ensurePlan(args: EnsurePlanArgs): Promise<{ planId: string; created: boolean }> {
-  const planId = planIdFor(args.planKey);
+  const planId = planIdFor(args.planKey, args.currency);
   const amount = toMajorUnits(args.amountCents);
 
   const { status, data } = await call<CfPlan>("/plans", "POST", {
