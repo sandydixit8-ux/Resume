@@ -42,6 +42,19 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at TEXT NOT NULL
 );
 
+-- Single-use password reset tokens. Stored hashed so a database leak cannot be
+-- replayed as a password reset; used_at makes each link one-shot.
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash  TEXT NOT NULL UNIQUE,
+  expires_at  TEXT NOT NULL,
+  used_at     TEXT,
+  created_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id);
+
 CREATE TABLE IF NOT EXISTS subscriptions (
   id              TEXT PRIMARY KEY,
   tenant_id       TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,

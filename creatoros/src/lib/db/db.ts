@@ -58,6 +58,21 @@ const MIGRATIONS: Array<{ id: number; up: (db: DatabaseSync) => void }> = [
     id: 8,
     up: (db) => addColumn(db, "orders", "refunded_cents", "INTEGER NOT NULL DEFAULT 0"),
   },
+  {
+    // Password reset links are single-use and stored hashed.
+    id: 9,
+    up: (db) => {
+      db.exec(`CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id          TEXT PRIMARY KEY,
+        user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash  TEXT NOT NULL UNIQUE,
+        expires_at  TEXT NOT NULL,
+        used_at     TEXT,
+        created_at  TEXT NOT NULL
+      )`);
+      db.exec("CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id)");
+    },
+  },
 ];
 
 function addColumn(db: DatabaseSync, table: string, column: string, ddl: string) {

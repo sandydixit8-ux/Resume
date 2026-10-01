@@ -15,6 +15,11 @@ export default function LoginPage() {
         </div>
         <div className="card p-8">
           <AuthForm mode="login" />
+          <p className="mt-4 text-center text-sm text-navy-500">
+            <Link href="/auth/forgot-password" className="font-medium text-brand-600 hover:text-brand-700">
+              Forgot your password?
+            </Link>
+          </p>
         </div>
         <p className="mt-6 text-center text-sm text-navy-500">
           New to CreatorOS? <Link href="/auth/register" className="font-medium text-brand-600 hover:text-brand-700">Create an account</Link>
