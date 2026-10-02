@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 const PLANS = [
   { name: "Free", price: 0, tag: "Start free", features: ["1 bio page", "5 links", "10 contacts", "1 booking service", "1k views/mo"] },
@@ -53,9 +54,7 @@ export default function PricingPage() {
         </p>
       </section>
 
-      <footer className="border-t border-navy-100 bg-navy-950 py-10 text-center text-sm text-navy-300">
-        <p>© {new Date().getFullYear()} ToolPilotPro CreatorOS. All rights reserved.</p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

@@ -2,16 +2,22 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
+    if (mode === "register" && !agreed) {
+      setError("Please accept the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
     setLoading(true);
     const form = new FormData(e.currentTarget);
     const body = Object.fromEntries(form.entries());
@@ -57,9 +63,27 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "login" ? "Log in" : "Create account"}
       </button>
       {mode === "register" && (
-        <p className="text-xs text-navy-500">
-          By signing up you agree to our Terms & Privacy Policy. We keep your data secure and request consent before storing any contact information.
-        </p>
+        <div className="space-y-3">
+          <label className="flex items-start gap-2 text-xs text-navy-600">
+            <input
+              id="agree"
+              name="agree"
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              I agree to the{" "}
+              <Link href="/terms" target="_blank" className="font-medium text-brand-600 hover:text-brand-700">Terms of Service</Link>
+              {" "}and{" "}
+              <Link href="/privacy" target="_blank" className="font-medium text-brand-600 hover:text-brand-700">Privacy Policy</Link>.
+            </span>
+          </label>
+          <p className="text-xs text-navy-500">
+            We keep your data secure and request consent before storing any contact information.
+          </p>
+        </div>
       )}
     </form>
   );

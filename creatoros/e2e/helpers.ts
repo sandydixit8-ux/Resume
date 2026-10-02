@@ -23,6 +23,7 @@ export async function register(page: Page, name: string, email: string, password
   await page.fill("#name", name);
   await page.fill("#email", email);
   await page.fill("#password", password);
+  await page.check("#agree");
   await page.click('button[type="submit"]');
   await expect(page).toHaveURL(/\/app$/);
 }
