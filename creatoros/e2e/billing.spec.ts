@@ -6,8 +6,10 @@ test.describe("billing & plan upgrades", () => {
     await login(page);
     await page.goto("/app/billing");
 
-    // Upgrade to pro.
-    await page.locator('a[href="/api/billing/checkout?plan=pro"]').click();
+    // Upgrade to pro. The checkout is started with a POST (Stripe returns a
+    // hosted URL, Cashfree opens the browser SDK), so the card exposes a button.
+    const proCard = page.locator("div.card", { has: page.getByRole("heading", { name: "pro", exact: true }) });
+    await proCard.getByRole("button", { name: /upgrade/i }).click();
     await expect(page).toHaveURL(/\/app\/billing/, { timeout: 20000 });
     await expect(page.getByText("You're on the pro plan.")).toBeVisible({ timeout: 15000 });
 
