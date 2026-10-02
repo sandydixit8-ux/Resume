@@ -10,6 +10,16 @@ const dbPath = join(root, "data", "e2e.db");
 process.env.CREATOROS_DB_PATH = dbPath;
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || "e2e-secret-with-enough-entropy-1234";
 
+// Never touch a real payment provider or send real email from the test suite.
+// These are set explicitly so a developer's local .env cannot leak live keys
+// or credentials into an E2E run.
+process.env.PAYMENT_PROVIDER = "mock";
+process.env.EMAIL_PROVIDER = "log";
+process.env.BREVO_API_KEY = "";
+process.env.CASHFREE_CLIENT_ID = "";
+process.env.CASHFREE_SECRET_KEY = "";
+process.env.STRIPE_SECRET_KEY = "";
+
 for (const suffix of ["", "-wal", "-shm"]) {
   rmSync(dbPath + suffix, { force: true });
 }
