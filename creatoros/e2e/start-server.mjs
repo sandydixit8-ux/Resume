@@ -13,6 +13,7 @@ process.env.AUTH_SECRET = process.env.AUTH_SECRET || "e2e-secret-with-enough-ent
 // Never touch a real payment provider or send real email from the test suite.
 // These are set explicitly so a developer's local .env cannot leak live keys
 // or credentials into an E2E run.
+process.env.NEXT_PUBLIC_SITE_URL = "http://localhost:3000";
 process.env.PAYMENT_PROVIDER = "mock";
 process.env.EMAIL_PROVIDER = "log";
 process.env.BREVO_API_KEY = "";

@@ -14,7 +14,7 @@ test.describe("legal pages & signup consent", () => {
       const res = await page.goto(l.path);
       expect(res?.ok()).toBeTruthy();
       await expect(page.getByRole("heading", { name: l.heading, level: 1 })).toBeVisible();
-      await expect(page.getByText("This page is a placeholder.")).toBeVisible();
+      await expect(page.getByText("Draft pending legal review.")).toBeVisible();
     });
   }
 
