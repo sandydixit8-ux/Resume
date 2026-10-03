@@ -49,7 +49,7 @@ A **modular monolith**: one Next.js application containing clearly bounded modul
 
 1. **SQLite now, Postgres later.** MVP runs anywhere with zero services. All SQL is ANSI-ish (no SQLite-only features in domain queries beyond `json_extract`), and IDs are prefixed strings (`ws_…`, `run_…`) so they remain portable. Migration path documented in `11-infrastructure-architecture.md`.
 2. **In-process job runner, not Redis/BullMQ (MVP).** A `jobs` table + `setInterval`-style worker with claim semantics gives durability across restarts. The job interface (`enqueue/claim/complete/fail`) is queue-agnostic so BullMQ can replace it without touching callers.
-3. **Stateless HMAC session cookies + revocable session rows.** Fast, no server session store; a `sessions` table gives logout-everywhere and future 2FA step-up.
+3. **Stateless HMAC session cookies + revocable session rows.** Fast, no server session store; the `sessions` table gives logout-everywhere today. A second factor is not implemented: the table records no `amr` column, so it cannot yet tell whether a session came from a password check or an OAuth exchange, which a 2FA step-up would need.
 4. **Zod at every boundary.** Request bodies, query params, AI outputs, imported content — all schema-validated before touching the domain.
 5. **Pure scoring engine.** Every score is computed from a checklist of weighted checks in code (`src/lib/scoring`), never a black box, so the UI can explain "why 76".
 6. **AI behind a router with an output validator and a no-fabrication guard.** If a required fact (volume, rank, traffic) is absent from project data, the output must say "Data unavailable."

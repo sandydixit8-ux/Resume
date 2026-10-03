@@ -172,6 +172,7 @@ describe("productionConfigWarnings", () => {
     delete process.env.NEXT_PUBLIC_SITE_URL;
     delete process.env.APP_URL;
     delete process.env.RANKPILOT_PUBLIC_URL;
+    delete process.env.SITE_URL;
     expect(productionConfigWarnings().join("\n")).toMatch(/SITE_URL/);
   });
 

@@ -45,3 +45,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local build artifacts (do not commit)
+build-check.txt
+app7.tar.gz
+~$*
