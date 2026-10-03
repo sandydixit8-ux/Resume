@@ -19,7 +19,8 @@ export function SiteFooter() {
             </Link>
           ))}
         </nav>
-        <p>© {new Date().getFullYear()} ToolPilotPro CreatorOS. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} CreatorOS. All rights reserved.</p>
+        <p className="text-xs text-navy-400">Technology partner: Ridhyansh Tech Infra Private Limited</p>
       </div>
     </footer>
   );

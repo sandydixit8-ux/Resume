@@ -1,4 +1,4 @@
--- ToolPilotPro CreatorOS — PostgreSQL-portable schema (runs on node:sqlite)
+-- CreatorOS — PostgreSQL-portable schema (runs on node:sqlite)
 -- All PKs are text UUID-like ids. Tenant rows carry tenant_id (org id).
 
 PRAGMA foreign_keys = ON;

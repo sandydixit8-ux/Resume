@@ -2,7 +2,7 @@
   "name": "creatoros",
   "version": "0.1.0",
   "private": true,
-  "description": "TOOLPILOTPRO CREATOROS - Create. Grow. Sell. Automate. All in One Place.",
+  "description": "CreatorOS - Create. Grow. Sell. Automate. All in One Place.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
