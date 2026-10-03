@@ -42,7 +42,7 @@ function seedCourseMinimal(): string {
     "INSERT INTO courses (id, tenant_id, profile_id, slug, title, description, price_cents, currency, published, created_at, updated_at) VALUES (?, ?, NULL, ?, 'Test Course', 'desc', 0, 'usd', 1, ?, ?)",
     id,
     TENANT,
-    "test-course-" + id.slice(-4),
+    "test-course-" + id.slice(4),
     nowIso(),
     nowIso()
   );

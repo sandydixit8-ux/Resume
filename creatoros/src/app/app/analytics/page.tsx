@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CalendarCheck, UserPlus } from "lucide-react";
 import { getSession } from "@/lib/auth/get-session";
-import { summary, timeSeries, breakdownBy } from "@/lib/analytics/engine";
+import { summary, timeSeries, breakdownBy, pageBreakdown } from "@/lib/analytics/engine";
 import { revenueSnapshot, revenueMonthlySeries, lastChargeAt } from "@/lib/analytics/money";
 import { row } from "@/lib/db/db";
 import { SummaryCards } from "@/components/analytics/summary-cards";
@@ -33,6 +33,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const sources = breakdownBy(s.org.id, "utm_source", days);
   const devices = breakdownBy(s.org.id, "device", days);
   const countries = breakdownBy(s.org.id, "country", days);
+  const pages = pageBreakdown(s.org.id, days);
 
   const pageCount = (row("SELECT COUNT(*) AS c FROM bio_pages WHERE tenant_id = ?", s.org.id) as { c: number })?.c ?? 0;
   const recentBookings = (row("SELECT COUNT(*) AS c FROM bookings WHERE tenant_id = ? AND status = 'confirmed'", s.org.id) as { c: number })?.c ?? 0;
@@ -91,7 +92,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <h2 className="mb-4 font-semibold text-navy-900">Traffic sources</h2>
           <DonutChart parts={refs} />
         </div>
-        <SourcesExplorer sources={sources} devices={devices} countries={countries} />
+          <SourcesExplorer sources={sources} devices={devices} countries={countries} pages={pages} />
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">

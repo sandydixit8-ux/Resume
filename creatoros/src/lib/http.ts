@@ -42,6 +42,22 @@ export function getClientIp(req: Request): string {
   return req.headers.get("x-real-ip") || "127.0.0.1";
 }
 
+/**
+ * Country code from the edge/CDN in front of the app (Cloudflare sends
+ * `cf-ipcountry`). Returns an uppercase ISO-3166 alpha-2 code, or "" when the
+ * value is missing or not a real country (XX = unknown, T1 = Tor).
+ */
+export function clientCountry(req: Request): string {
+  const raw =
+    req.headers.get("cf-ipcountry") ||
+    req.headers.get("x-vercel-ip-country") ||
+    req.headers.get("x-country-code") ||
+    "";
+  const code = raw.trim().toUpperCase();
+  if (!code || code === "XX" || code === "T1") return "";
+  return code;
+}
+
 export function userAgentInfo(req: Request): { device: string; ref: string } {
   const ua = req.headers.get("user-agent") || "";
   const device = /mobile|android|iphone|ipad/i.test(ua) ? "mobile" : "desktop";

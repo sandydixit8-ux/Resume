@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { ok, err, readJson, getClientIp, userAgentInfo } from "@/lib/http";
+import { ok, err, readJson, getClientIp, userAgentInfo, clientCountry } from "@/lib/http";
 import { getPublicBioPage } from "@/lib/bio/page";
 import { trackEvent, hashVisitorId, newVisitorId } from "@/lib/analytics/engine";
 import { rateLimit, rateKey } from "@/lib/security/rate-limit";
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     utmSource: parsed.data.utm_source,
     utmCampaign: parsed.data.utm_campaign,
     device,
+    country: clientCountry(req),
   });
 
   return ok({ visitorId: parsed.data.visitorId ? visitorId : undefined, tracked: true });

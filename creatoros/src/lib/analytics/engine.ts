@@ -121,14 +121,35 @@ export function timeSeries(tenantId: string, days = 30): SeriesPoint[] {
 
 export function breakdownBy(tenantId: string, column: "ref" | "utm_source" | "device" | "country", days = 30): { label: string; count: number }[] {
   const since = new Date(Date.now() - days * 86400000).toISOString();
-  const allowed: Record<string, string> = { ref: "ref", utm_source: "utm_source", device: "device", country: "country" };
-  const col = allowed[column];
-  if (!col) return [];
+  const allowed: Record<string, { col: string; fallback: string }> = {
+    ref: { col: "ref", fallback: "direct" },
+    utm_source: { col: "utm_source", fallback: "direct" },
+    device: { col: "device", fallback: "unknown" },
+    country: { col: "country", fallback: "Unknown" },
+  };
+  const spec = allowed[column];
+  if (!spec) return [];
   return all<{ label: string; count: number }>(
-    `SELECT COALESCE(NULLIF(TRIM(${col}), ''), 'direct') AS label, COUNT(*) AS count
+    `SELECT COALESCE(NULLIF(TRIM(${spec.col}), ''), '${spec.fallback}') AS label, COUNT(*) AS count
      FROM analytics_events
      WHERE tenant_id = ? AND created_at >= ?
      GROUP BY label ORDER BY count DESC LIMIT 10`,
+    tenantId,
+    since
+  );
+}
+
+/** Page views grouped by bio page, most-viewed first. */
+export function pageBreakdown(tenantId: string, days = 30): { label: string; count: number }[] {
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  return all<{ label: string; count: number }>(
+    `SELECT COALESCE(NULLIF(TRIM(p.title), ''), NULLIF(TRIM(p.slug), ''), 'Home') AS label,
+            COUNT(*) AS count
+     FROM analytics_events e
+     JOIN bio_pages p ON p.id = e.page_id
+     WHERE e.tenant_id = ? AND e.created_at >= ? AND e.event_type = 'page_view'
+     GROUP BY e.page_id
+     ORDER BY count DESC LIMIT 10`,
     tenantId,
     since
   );

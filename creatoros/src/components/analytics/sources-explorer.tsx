@@ -4,16 +4,23 @@ import { useState } from "react";
 
 type Part = { label: string; count: number };
 
-export function SourcesExplorer(props: { sources: Part[]; devices: Part[]; countries: Part[] }) {
-  const [tab, setTab] = useState<"sources" | "devices" | "countries">("sources");
-  const data = tab === "sources" ? props.sources : tab === "devices" ? props.devices : props.countries;
+export function SourcesExplorer(props: { sources: Part[]; devices: Part[]; countries: Part[]; pages: Part[] }) {
+  const [tab, setTab] = useState<"pages" | "sources" | "devices" | "countries">("pages");
+  const data =
+    tab === "sources"
+      ? props.sources
+      : tab === "devices"
+        ? props.devices
+        : tab === "countries"
+          ? props.countries
+          : props.pages;
   const total = data.reduce((a, b) => a + b.count, 0);
 
   return (
     <div className="card p-6">
       <h2 className="mb-4 font-semibold text-navy-900">Breakdown</h2>
       <div className="mb-4 flex gap-1 rounded-xl bg-navy-50 p-1">
-        {(["sources", "devices", "countries"] as const).map((t) => (
+        {(["pages", "sources", "devices", "countries"] as const).map((t) => (
           <button
             key={t}
             type="button"
